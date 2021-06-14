@@ -1,6 +1,6 @@
 #!/bin/bash
 # [1] arch
-chrootUrl="https://raw.githubusercontent.com/romariorobby/rarbs/main/opt/chroot.sh"
+chrootUrl="https://raw.githubusercontent.com/romariorobby/rarbs/master/opt/chroot.sh"
 lsblk && echo "======================================[Refresh Mirrorlist with Reflector]==============================="
 reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 && pacman -Syy
 

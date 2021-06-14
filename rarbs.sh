@@ -11,7 +11,7 @@ esac done
 
 [ -z "$dotfilesrepo" ] && dotfilesrepo="https://github.com/romariorobby/dotfiles.git"
 [ -z "$sshdotfilesrepo" ] && sshdotfilesrepo="git@github.com:romariorobby/dotfiles.git"
-[ -z "$progsfile" ] && progsfile="https://raw.githubusercontent.com/romariorobby/dotfiles/main/private_dot_config/progs.csv"
+[ -z "$progsfile" ] && progsfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/progs.csv"
 [ -z "$aurhelper" ] && aurhelper="paru"
 # [ -z "$repobranch" ] && repobranch="master"
 

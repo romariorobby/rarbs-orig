@@ -1,5 +1,5 @@
 #Potential variables: timezone, lang and local
-rarbsUrl="https://raw.githubusercontent.com/romariorobby/rarbs/main/rarbs.sh"
+rarbsUrl="https://raw.githubusercontent.com/romariorobby/rarbs/master/rarbs.sh"
 echo "----------------------"
 echo "-----ROOT PASSWORD----"
 echo "----------------------"
