@@ -13,10 +13,10 @@ hwclock --systohc
 echo "LANG=en_US.UTF-8" >> /etc/locale.conf
 echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 echo "en_US ISO-8859-1" >> /etc/locale.gen
-
-echo "127.0.0.1\tlocalhost
-::1 \tlocalhost
-127.0.0.1\t$hname.localdomain\t$hname\n" >> /etc/hosts
+hname="/etc/hostname"
+echo "127.0.0.1 localhost
+::1 localhost
+127.0.0.1   $(cat $hname).localdomain   $(cat $hname)\n" >> /etc/hosts
 
 locale-gen
 NETMD=""
@@ -67,6 +67,6 @@ pacman --noconfirm --needed -S dialog git
 rarbs() { curl $rarbsUrl > rarbs.sh && bash rarbs.sh ;}
 dialog --title "Install RARBS" --yesno "This install script will easily let you access Romario's Auto-Rice Boostrapping Scripts (RARBS) which automatically install a full Arch Linux .\n\nIf you'd like to install this, select yes, otherwise select no.\n\nRomario"  15 60 && rarbs
 
-if [ $(cat archtype) = "X" ]; then
+if [ $(cat archtype.tmp) = "X" ]; then
    pidof runit && dialog --colors --title "Important Note!"  --no-cancel "Run this:\n ln -s /etc/runit/sv/NetworkManager /run/runit/service" 8 70
 fi

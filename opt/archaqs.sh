@@ -1,8 +1,6 @@
 #!/bin/bash
 # [1] arch
 chrootUrl="https://raw.githubusercontent.com/romariorobby/rarbs/master/opt/chroot.sh"
-lsblk && echo "======================================[Refresh Mirrorlist with Reflector]==============================="
-reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 && pacman -Syy
 
 pacman -S --noconfirm dialog parted || { echo "Error at script start: Are you sure you're running this as the root user? Are you sure you have an internet connection?"; exit; }
 
@@ -29,6 +27,13 @@ dialog --defaultno --title "Time Zone select" --yesno "Do you want use the defau
 dialog --no-cancel --inputbox "Enter partitionsize in gb, separated by space (swap & root).\nExample:\n25 40\n" 10 60 2> psize
 
 dialog --defaultno --title "DON'T BE A BRAINLET!" --yesno "Do you think I'm meming? Only select yes to DELETE your entire drive you input and reinstall Arch.\n\nTo stop this script, press no."  10 60 || exit
+
+lsblk && echo "======================================[Refresh Mirrorlist with Reflector]==============================="
+if [ $(cat archtype) = "A" ]; then
+    reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 && pacman -Syy
+else
+    reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist-arch >/dev/null 2>&1 && pacman -Syy
+fi
 
 IFS=' ' read -ra SIZE <<< $(cat psize)
 
@@ -200,7 +205,11 @@ cat installtype > /mnt/installtype.tmp
 cat archtype > /mnt/archtype.tmp
 rm tz.tmp
 mv comp /mnt/etc/hostname
-cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
+if [ $(cat archtype) = "A" ]; then
+    cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
+else
+    cp /etc/pacman.d/mirrorlist-arch /mnt/etc/pacman.d/mirrorlist-arch
+fi
 
 if [ $(cat archtype) = "A" ]; then
     curl $chrootUrl > /mnt/chroot.sh && arch-chroot /mnt bash chroot.sh && rm /mnt/chroot.sh
