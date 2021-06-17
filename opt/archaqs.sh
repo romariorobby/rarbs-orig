@@ -191,7 +191,8 @@ else
 fi
 
 [ ! -d "/mnt/etc" ] && mkdir /mnt/etc
-[[ -f "/mnt/etc/fstab" && "/mnt/etc/hostname" ]] && rm /mnt/etc/hostname /mnt/etc/fstab
+[ -f "/mnt/etc/fstab" ] && rm /mnt/etc/fstab
+[ -f "/mnt/etc/hostname" ] && rm /mnt/etc/hostname
 
 if [ $(cat archtype) = "A" ]; then
     genfstab -U /mnt >> /mnt/etc/fstab
