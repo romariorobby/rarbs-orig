@@ -1,7 +1,8 @@
 # OS,      MAIN	     ,     OPTIONAL TAG     ,
-#LIN,A = AUR,M = MAIN,O = Optional,X = Extra,
-#MAC,H = AUR,		 ,O = Optional,X = Extra,
-#WIN,C = AUR,		 ,O = Optional,X = Extra,
+#LIN(yay,etc)         ,A = AUR,  M = Minimal, O = Optional, X = Extra,
+#LIN(Pacman,apt,etc)  ,M = MAIN, M = Minimal, O = Optional, X = Extra,
+#MAC(Homebrew)        ,H = AUR,  M = Minimal, O = Optional, X = Extra,
+#WIN(Chocolate/WinGet),C = AUR,  M = Minimal, O = Optional, X = Extra,
 #
 #TAG,NAME IN REPO (or git url),PURPOSE (should be a verb phrase to sound right while installing)
 A,bitwarden-bin, "Bitwarden Password Manager"
@@ -91,6 +92,7 @@ M,highlight, "can highlight code output. (req:lf)"
 M,imagemagick, "is an Image Editor"
 M,kitty, "is a minimalist Terminal Emulator"
 M,libgnome-keyring, "System Keyring Lib"
+M,lxappearance, "is Setting Color Manager for GUI Application"
 M,libnotify,"allows desktop notifications."
 M,lynx,"is a terminal browser. [Browser]"
 M,maim,"can take quick screenshots at your request."

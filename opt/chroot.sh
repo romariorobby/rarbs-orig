@@ -63,10 +63,21 @@ else
     ls /sys/firmware/efi/efivars >/dev/null 2>&1 && uefigrub || legacygrub
 fi
 
+if [ $(cat archtype.tmp) = "X" ]; then
+   pidof runit && dialog --colors --title "Important Note!"  --no-cancel "Run this:\n ln -s /etc/runit/sv/NetworkManager /run/runit/service" 8 70
+   printf '#Arch Repositories
+   [extra]
+   Include = /etc/pacman.d/mirrorlist-arch\n
+   [community]
+   Include = /etc/pacman.d/mirrorlist-arch\n
+   [multilib]
+   Include = /etc/pacman.d/mirrorlist-arch\n' >> /etc/pacman.conf && echo "Adding Arch Repositories...."
+   pacman -S artix-archlinux-support
+   pacman-key --init
+   pacman-key --populate artix
+   pacman -Syy
+fi
+
 pacman --noconfirm --needed -S dialog git
 rarbs() { curl $rarbsUrl > rarbs.sh && bash rarbs.sh ;}
 dialog --title "Install RARBS" --yesno "This install script will easily let you access Romario's Auto-Rice Boostrapping Scripts (RARBS) which automatically install a full Arch Linux .\n\nIf you'd like to install this, select yes, otherwise select no.\n\nRomario"  15 60 && rarbs
-
-if [ $(cat archtype.tmp) = "X" ]; then
-   pidof runit && dialog --colors --title "Important Note!"  --no-cancel "Run this:\n ln -s /etc/runit/sv/NetworkManager /run/runit/service" 8 70
-fi
