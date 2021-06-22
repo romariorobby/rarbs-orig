@@ -1,5 +1,5 @@
 *
 Fork of LARBS
 ** TODO
-- [ ] Create MacOS Bootstrap
+- [X] Create MacOS Bootstrap
 - [ ] Create Windows Bootstrap

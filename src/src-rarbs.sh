@@ -1,10 +1,11 @@
 #!/bin/sh
 
-while getopts ":a:r:b:p:h" o; do case "${o}" in
-	h) printf "Optional arguments for custom use:\\n  -r: Dotfiles repository (local file or url)\\n  -p: Dependencies and programs csv (local file or url)\\n  -a: AUR helper (must have pacman-like syntax)\\n  -h: Show this message\\n" && exit 1 ;;
+while getopts ":a:r:b:p:s:h" o; do case "${o}" in
+	h) printf "Optional arguments for custom use:\\n  -r: Dotfiles repository (local file or url)\\n  -p: Dependencies and programs csv (local file or url)\\n  -s: Homebrew Source(tap)\\n  -a: AUR helper (must have pacman-like syntax)\\n  -h: Show this message\\n" && exit 1 ;;
 	r) dotfilesrepo=${OPTARG} && chezmoi git ls-remote "$dotfilesrepo" || exit 1 ;;
 	b) repobranch=${OPTARG} ;;
 	p) progsfile=${OPTARG} ;;
+	s) brewtapfile=${OPTARG} ;;
 	a) aurhelper=${OPTARG} ;;
 	*) printf "Invalid option: -%s\\n" "$OPTARG" && exit 1 ;;
 esac done
@@ -12,18 +13,35 @@ esac done
 [ -z "$dotfilesrepo" ] && dotfilesrepo="https://github.com/romariorobby/dotfiles.git"
 [ -z "$sshdotfilesrepo" ] && sshdotfilesrepo="git@github.com:romariorobby/dotfiles.git"
 [ -z "$progsfile" ] && progsfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/progs.csv"
-[ -z "$aurhelper" ] && aurhelper="paru"
-# [ -z "$repobranch" ] && repobranch="master"
+[ -z "$brewtapfile" ] && brewtapfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/opt/brewtap.csv"
+[ -z "$aurhelper" ] && aurhelper="paru-bin"
 
-installpkg(){ pacman --noconfirm --needed -S "$1" >/dev/null 2>&1 ;}
+installpkg() { \
+	if [ -f "/etc/arch-release" ]; then
+		pacman --noconfirm --needed -S "$1" >/dev/null 2>&1
+	elif [ "$(uname)" == "Darwin" ]; then
+		brew install "$1" >/dev/null 2>&1
+	fi
+}
+
+tapbrew(){ \
+	brew tap "$1" >/dev/null 2>&1
+}
 
 error() { clear; printf "ERROR:\\n%s\\n" "$1" >&2; exit 1;}
 
 welcomemsg() { \
-	dialog --title "Welcome!" --msgbox "Buggy Bootstrap\\n\\nThis script will automatically install a fully-featured Linux desktop.\\n\\n-Romario" 10 60
+	dialog --title "Welcome!" --msgbox "Buggy Bootstrap\\n\\nThis script will automatically install a fully-featured $(echo $OS) desktop.\\n\\n-Romario" 10 60
+	dialog --colors --title "Important Note!" --yes-label "All ready!" --no-label "Return..." --yesno "If you running GNU/LINUX(Arch), Be sure the computer you are using has current pacman updates and refreshed Arch keyrings.\\n\\nIf it does not, the installation of some programs might fail." 8 70
+	mkdir tmp
+	}
 
-	dialog --colors --title "Important Note!" --yes-label "All ready!" --no-label "Return..." --yesno "Be sure the computer you are using has current pacman updates and refreshed Arch keyrings.\\n\\nIf it does not, the installation of some programs might fail." 8 70
-	}	
+rarbtype() { \
+	dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select RARBS Type: " 10 60 3 \
+		M "Minimal" on \
+		F "Full" off 2> rarbstype
+		RARBSTYPE="$(cat rarbstype)"
+}
 
 getuserandpass() { \
 	# Prompts user for new username an password.
@@ -45,10 +63,10 @@ usercheck() { \
 	}
 
 isuserbw() { \
-	dialog --title "Install Bitwarden" --yesno "Do you want login bitwarden?" 8 90 && getbwuser && addbwuserandpass || clear
+	dialog --title "Install Bitwarden" --yesno "Do you want login bitwarden?" 8 90 && getbwuserandpass && addbwuserandpass || clear
 }
 
-getbwuser() { \
+getbwuserandpass() { \
 	bwname=$(dialog --inputbox "First, please enter a email address for bitwarden ." 10 60 3>&1 1>&2 2>&3 3>&1) || exit 1
 	while ! echo "$bwname" | grep -q '\S\+@\S\+\.[A-Za-z]\+'; do
 		bwname=$(dialog --no-cancel --inputbox "Email Address not valid. Give a username beginning with a letter, with only lowercase letters, - or _." 10 60 3>&1 1>&2 2>&3 3>&1)
@@ -102,6 +120,10 @@ maininstall() { # Installs all needed programs from main repo.
 	installpkg "$1"
 	}
 
+maintap() {
+	dialog --title "RARBS Installation" --infobox "Adding \`$1\` to Homebrew ($n of $totaltap). $1 $2" 5 70
+	tapbrew "$1"
+}
 chezgitrepo() { # Clone and install dotfiles using chezmoi
 	dialog --infobox "Downloading and installing config files..." 4 60
 	[ -x "$(command -v "chezmoi")" ] || installpkg chezmoi >/dev/null 2>&1
@@ -136,6 +158,13 @@ manualinstall(){
 	cd $1 && sudo -u "$name" makepkg -si --noconfirm >/dev/null 2>&1
 	cd /tmp || return 1) ;}
 
+insbrew(){ \
+	echo "Installing XCode CLT..."
+	[ -d "/Library/Developer/CommandLineTools" ] && echo "Xcode Installed.." || xcode-select --install
+	[ -x "$(command -v "brew")" ] && echo "Brew Already Installed" || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+	brew update
+}
+
 aurinstall() { \
 	dialog --title "RARBS Installation" --infobox "Installing \`$1\` ($n of $total) from the AUR. $1 $2" 5 70
 	echo "$aurinstalled" | grep -q "^$1$" && return 1
@@ -144,7 +173,11 @@ aurinstall() { \
 
 pipinstall() { \
 	dialog --title "RARBS Installation" --infobox "Installing the Python package \`$1\` ($n of $total). $1 $2" 5 70
-	[ -x "$(command -v "pip")" ] || installpkg python-pip >/dev/null 2>&1
+	if [ "$(uname)" == "Darwin" ]; then
+		[ -x "$(command -v "pip")" ] || curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3 get-pip.py >/dev/null 2>&1
+	else 
+		[ -x "$(command -v "pip")" ] || installpkg python-pip >/dev/null 2>&1
+	fi
 	yes | pip install "$1"
 	}
 
@@ -154,149 +187,129 @@ npminstall() { \
 	npm install -g "$1"
 	}
 
+# TODO: Refactor Ugly code
 installationloop() { \
-	([ -f "$progsfile" ] && cp "$progsfile" /tmp/progs.csv) || curl -Ls "$progsfile" | sed '/^#/d' > /tmp/progs.csv
+	if [ "$(uname)" == "Darwin" ]; then
+		if [ $RARBSTYPE == "M" ]; then
+			([ -f "$progsfile" ] && grep "^[HPN]," $progsfile > /tmp/progs.csv ) || curl -Ls "$progsfile" | grep "^[HPN]," > /tmp/progs.csv
+			([ -f "$brewtapfile" ] && grep "^M," $brewtapfile > /tmp/brewtap.csv ) || curl -Ls "$brewtapfile" | grep "^M," > /tmp/brewtap.csv
+		else
+			([ -f "$progsfile" ] && sed '/^[#AM]/d' $progsfile > /tmp/progs.csv ) || curl -Ls "$progsfile" | sed '/^[#AM]/d' > /tmp/progs.csv
+			([ -f "$brewtapfile" ] && sed '/^#/d' $brewtapfile > /tmp/brewtap.csv ) || curl -Ls "$brewtapfile" | sed '/^#/d' > /tmp/brewtap.csv
+		fi
+	else
+		if [ $RARBSTYPE == "M" ]; then
+			([ -f "$progsfile" ] && grep "^[AMPN]," "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | grep "/^[AMPN]," > /tmp/progs.csv
+		else
+			([ -f "$progsfile" ] && sed '/^[#H]/d' "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | sed '/^[#H]/d' > /tmp/progs.csv
+		fi
+	fi
+	totaltap=$(wc -l < /tmp/brewtap.csv)
+	while IFS=, read -r tag source comment; do
+		n=$((n+1))
+		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
+		case "$tag" in
+			"M") maintap "$source" "$comment" ;;
+		esac
+	done < /tmp/brewtap.csv
 	# TODO: Make Read from org file del/IFS="|"
-	# ([ -f "$progsfile" ] && cp "$progsfile" /tmp/progs.csv) || curl -Ls "$progsfile" | sed '/^-\|*\|#/d;/^|-/d' > /tmp/progs.csv
+	# ([ -f "$progsfile" ] && cp "$progsfile" /tmp/progs.csv) || curl -lLs "$progsfile" | sed '/^-\|*\|#/d;/^|-/d' > /tmp/progs.csv
 	total=$(wc -l < /tmp/progs.csv)
 	aurinstalled=$(pacman -Qqm)
 	while IFS=, read -r tag program comment; do
 		n=$((n+1))
 		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
-		case "$tag" in
-			if [[ $minimal == 1 && $linux == 1 ]];then
-				"AM") aurinstall "$program" "$comment" ;;
-				"MM") maininstall "$program" "$comment" ;;
+		# Arch-Linux
+		if [ -f "/etc/arch-release" ]; then
+			if [ "$RARBSTYPE" == "M" ]; then
+				case "$tag" in
+					"MM") maininstall "$program" "$comment" ;;
+					"AM") aurinstall "$program" "$comment" ;;
+				esac
 			else
-				"A") aurinstall "$program" "$comment" ;;
-				"M") maininstall "$program" "$comment" ;;
+				case "$tag" in
+					"M") maininstall "$program" "$comment" ;;
+					"A") aurinstall "$program" "$comment" ;;
+				esac
 			fi
-			if [[ $minimal == 1 && $macos = 1 ]];then
-				"CM") chezmoiinstall "$program" "$comment" ;;
+		# MacOS
+		else
+			if [ "$RARBSTYPE" == "M" ]; then
+				case "$tag" in
+					"H") maininstall "$program" "$comment" ;;
+				esac
 			else
-				"C") chezmoiinstall "$program" "$comment" ;;
+				case "$tag" in
+					"H"|"HO") maininstall "$program" "$comment" ;;
+					# "HO") maininstall "$program" "$comment" ;;
+				esac
 			fi
+		fi
+		if [ "$RARBSTYPE" == "M" ]; then
+			case "$tag" in
 				"P") pipinstall "$program" "$comment" ;;
 				"N") npminstall "$program" "$comment" ;;
-				"G") gitmakeinstalltemp "$program" "$comment" ;;
-		esac
+				# "C") chezmoiinstall "$program" "$comment" ;;
+				# "G") gitmakeinstalltemp "$program" "$comment" ;;
+			esac
+		else
+			case "$tag" in
+				"P"|"PO") pipinstall "$program" "$comment" ;;
+				"N"|"NO") npminstall "$program" "$comment" ;;
+				# "C"|"CO") chezmoiinstall "$program" "$comment" ;;
+				# "G"|"GO") gitmakeinstalltemp "$program" "$comment" ;;
+			esac
+		fi
 	done < /tmp/progs.csv ;}
 
-systembeepoff() { dialog --infobox "Getting rid of that retarded error beep sound..." 10 50
+systembeepoff() {
+	dialog --infobox "Getting rid of that retarded error beep sound..." 10 50
 	rmmod pcspkr
 	echo "blacklist pcspkr" > /etc/modprobe.d/nobeep.conf ;}
 
+symlink(){ \
+	[ -f "/etc/bash.bashrc" ] && echo '
+	if [ -s "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc" ]; then
+			. "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc"
+	fi
+	' >> /etc/bash.bashrc
+	if [ "$(uname)" == "Darwin" ]; then
+		# Init
+		cd /Users/$whoami && rm .bashrc .bash_history .bash_profile .bash_logout .zsh_history
+		[ -d /Users/$whoami/.local/share/chezmoi ] && chezmoi -v apply
+
+		# Symlink profile shell if exist
+		[ -d /Users/$whoami/.config/shell ] && ln -sf /Users/$whoami/.config/shell/profile /Users/$whoami/.profile &&
+		ln -sf /Users/$whoami/.config/shell/profile /Users/$whoami/.zprofile && echo "Symlink Shell"
+	else
+		# Init
+		cd /home/$name && rm .bashrc .bash_history .bash_profile .bash_logout
+		[ -d /home/$name/.local/share/chezmoi ] && sudo -u "$name" chezmoi -v apply
+
+		# Symlink profile shell if exist
+		[ -d /home/$name/.config/shell ] && ln -sf /home/$name/.config/shell/profile /home/$name/.profile &&
+		ln -sf /home/$name/.config/shell/profile /home/$name/.zprofile && echo "Symlink Shell"
+
+		# Symlink profile x11 if exist
+		[ -d /home/$name/.config/x11 ] && ln -sf /home/$name/.config/x11/xinitrc /home/$name/.xinitrc &&
+		ln -sf /home/$name/.config/x11/xprofile /home/$name/.xprofile && echo "Symlink X11"
+	fi
+}
+
+# TODO: Complete Cleanup
+cleanup() { \
+	dialog --title "Cleanup" --yesno "Do you want clean all caches?" 8 90
+	mv rarbstype ~/.local/share
+	
+
+}
+
 finalize(){ \
 	dialog --infobox "Preparing welcome message..." 4 50
-	dialog --title "All done!" --msgbox "Congrats! Provided there were no hidden errors, the script completed successfully and all the programs and configuration files should be in place.\\n\\nTo run the new graphical environment, log out and log back in as your new user, then run the command \"startx\" to start the graphical environment (it will start automatically in tty1).\\n\\n.t Romario" 12 80
+	if [ "$(uname)" == "Darwin" ]; then
+		dialog --title "All done, MAC!" --msgbox "Congrats! Provided there were no hidden errors, the script completed successfully and all the programs and configuration files should be in place.\\n\\n Some configurations needed to restart .\\n\\n.t Romario" 12 80
+	else
+		dialog --title "All done, LINUX!" --msgbox "Congrats! Provided there were no hidden errors, the script completed successfully and all the programs and configuration files should be in place.\\n\\nTo run the new graphical environment, log out and log back in as your new user, then run the command \"startx\" to start the graphical environment (it will start automatically in tty1).\\n\\n.t Romario" 12 80
+	fi
 	}
-### THE ACTUAL SCRIPT ###
-# Check if user is root on Arch distro. Install dialog.
-pacman --noconfirm --needed -S dialog || error "Are you sure you're running this as the root user, are on an Arch-based distribution and have an internet connection?"
 
-# Welcome user and pick dotfiles.
-welcomemsg || error "User exited."
-
-# Get and verify username and password.
-getuserandpass || error "User exited."
-
-# Give warning if user already exists.
-usercheck || error "User exited."
-
-# Get bitwarden user and verify email and password
-isuserbw || error "User Exited"
-#getbwuser || error "User exited."
-
-# Last chance for user to back out before install.
-preinstallmsg || error "User exited."
-
-# Refresh Arch keyrings.
-refreshkeys || error "Error automatically refreshing Arch keyring. Consider doing so manually."
-
-for x in curl base-devel git ntp zsh; do
-	dialog --title "RARBS Installation" --infobox "Installing \`$x\` which is required to install and configure other programs." 5 70
-	installpkg "$x"
-done
-
-dialog --title "RARBS Installation" --infobox "Synchronizing system time to ensure successful and secure installation of software..." 4 70
-ntpdate 0.id.pool.ntp.org >/dev/null 2>&1
-
-adduserandpass || error "Error adding username and/or password."
-
-#addbwuserandpass || error "Error adding bitwarden email and/or password is incorrect."
-
-[ -f /etc/sudoers.pacnew ] && cp /etc/sudoers.pacnew /etc/sudoers # Just in case
-
-# Allow user to run sudo without password. Since AUR programs must be installed
-# in a fakeroot environment, this is required for all builds with AUR.
-newperms "%wheel ALL=(ALL) NOPASSWD: ALL"
-
-# Make pacman and yay colorful and adds eye candy on the progress bar because why not.
-grep -q "^Color" /etc/pacman.conf || sed -i "s/^#Color$/Color/" /etc/pacman.conf
-grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
-
-# Use all cores for compilation.
-sed -i "s/-j2/-j$(nproc)/;s/^#MAKEFLAGS/MAKEFLAGS/" /etc/makepkg.conf
-
-# manualinstall $aurhelper || error "Failed to install AUR helper."
-manualinstall paru-bin || error "Failed to install AUR helper."
-
-# The command that does all the installing. Reads the progs.csv file and
-# installs each needed program the way required. Be sure to run this only after
-# the user has been created and has priviledges to run sudo without a password
-# and all build dependencies are installed.
-installationloop
-
-# 
-dialog --title "RARBS Installation" --infobox "Finally, installing \`libxft-bgra\` to enable color emoji in suckless software without crashes." 5 70
-yes | sudo -u "$name" $aurhelper -S libxft-bgra-git >/dev/null 2>&1
-
-# Most important command! Get rid of the beep!
-systembeepoff
-
-chezgitrepo "$dotfilesrepo"
-
-# Make zsh the default shell for the user.
-chsh -s /bin/zsh "$name" >/dev/null 2>&1
-sudo -u "$name" mkdir -p "/home/$name/.cache/zsh/"
-
-# Tap to click
-[ ! -f /etc/X11/xorg.conf.d/40-libinput.conf ] && printf 'Section "InputClass"
-        Identifier "libinput touchpad catchall"
-        MatchIsTouchpad "on"
-        MatchDevicePath "/dev/input/event*"
-        Driver "libinput"
-	# Enable left mouse button by tapping
-	Option "Tapping" "on"
-EndSection' > /etc/X11/xorg.conf.d/40-libinput.conf
-
-# Fix fluidsynth/pulseaudio issue.
-grep -q "OTHER_OPTS='-a pulseaudio -m alsa_seq -r 48000'" /etc/conf.d/fluidsynth ||
-	echo "OTHER_OPTS='-a pulseaudio -m alsa_seq -r 48000'" >> /etc/conf.d/fluidsynth
-
-# Start/restart PulseAudio.
-killall pulseaudio; sudo -u "$name" pulseaudio --start
-
-# This line, overwriting the `newperms` command above will allow the user to run
-# serveral important commands, `shutdown`, `reboot`, updating, etc. without a password.
-newperms "%wheel ALL=(ALL) ALL #MARIO
-%wheel ALL=(ALL) NOPASSWD: /usr/bin/make,/usr/bin/shutdown,/usr/bin/reboot,/usr/bin/systemctl suspend,/usr/bin/wifi-menu,/usr/bin/mount,/usr/bin/umount,/usr/bin/pacman -Syu,/usr/bin/pacman -Syyu,/usr/bin/pacman -Qu,/usr/bin/systemctl restart NetworkManager,/usr/bin/pacman -Syyu --noconfirm,/usr/bin/pacman -Qqe,/usr/bin/pacman,/usr/bin/pacman -S needed,/usr/bin/pacman -Slq,/usr/bin/loadkeys,/usr/bin/yay,/usr/bin/paru,/usr/bin/paru -Syu,/usr/bin/pacman -Syyuw --noconfirm,/usr/local/bin/sigdwmblocks"
-
-echo '
-if [ -s "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc" ]; then
-	    . "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc"
-fi
-' >> /etc/bash.bashrc
-# Symlink profile shell if exist
-cd /home/$name && rm .bashrc .bash_history .bash_profile .bash_logout
-[ -d /home/$name/.local/share/chezmoi ] && sudo -u "$name" chezmoi -v apply
-
-[ -d /home/$name/.config/shell ] && ln -sf /home/$name/.config/shell/profile /home/$name/.profile &&
-ln -sf /home/$name/.config/shell/profile /home/$name/.zprofile && echo "Symlink Shell"
-
-# Symlink profile x11 if exist
-[ -d /home/$name/.config/x11 ] && ln -sf /home/$name/.config/x11/xinitrc /home/$name/.xinitrc &&
-ln -sf /home/$name/.config/x11/xprofile /home/$name/.xprofile && echo "Symlink X11"
-# Last message! Install complete!
-finalize
-clear
