@@ -275,12 +275,12 @@ symlink(){ \
 	' >> /etc/bash.bashrc
 	if [ "$(uname)" == "Darwin" ]; then
 		# Init
-		cd /Users/$whoami && rm .bashrc .bash_history .bash_profile .bash_logout .zsh_history
-		[ -d /Users/$whoami/.local/share/chezmoi ] && chezmoi -v apply
+		cd $HOME && rm .bashrc .bash_history .bash_profile .bash_logout .zsh_history
+		[ -d $HOME/.local/share/chezmoi ] && chezmoi -v apply
 
 		# Symlink profile shell if exist
-		[ -d /Users/$whoami/.config/shell ] && ln -sf /Users/$whoami/.config/shell/profile /Users/$whoami/.profile &&
-		ln -sf /Users/$whoami/.config/shell/profile /Users/$whoami/.zprofile && echo "Symlink Shell"
+		[ -d $HOME/.config/shell ] && ln -sf $HOME/.config/shell/profile $HOME/.profile &&
+		ln -sf $HOME/.config/shell/profile $HOME/.zprofile && echo "Symlink Shell"
 	else
 		# Init
 		cd /home/$name && rm .bashrc .bash_history .bash_profile .bash_logout
