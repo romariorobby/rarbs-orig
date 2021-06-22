@@ -17,7 +17,7 @@ esac done
 [ -z "$aurhelper" ] && aurhelper="paru-bin"
 
 installpkg() { \
-	if [ -f "/etc/arch-release" ]; then
+	if [[ -f "/etc/arch-release" ||  -f "/etc/artix-release" ]]; then
 		pacman --noconfirm --needed -S "$1" >/dev/null 2>&1
 	elif [ "$(uname)" == "Darwin" ]; then
 		brew install "$1" >/dev/null 2>&1
@@ -121,7 +121,7 @@ maininstall() { # Installs all needed programs from main repo.
 	}
 
 maintap() {
-	dialog --title "RARBS Installation" --infobox "Adding \`$1\` to Homebrew ($n of $totaltap). $1 $2" 5 70
+	dialog --title "RARBS Homebrew Source" --infobox "Adding \`$1\` to Homebrew ($s of $totaltap). $1 $2" 5 70
 	tapbrew "$1"
 }
 chezgitrepo() { # Clone and install dotfiles using chezmoi
@@ -199,14 +199,14 @@ installationloop() { \
 		fi
 	else
 		if [ $RARBSTYPE == "M" ]; then
-			([ -f "$progsfile" ] && grep "^[AMPN]," "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | grep "/^[AMPN]," > /tmp/progs.csv
+			([ -f "$progsfile" ] && grep "^[AMPN]," "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | grep "^[AMPN]," > /tmp/progs.csv
 		else
 			([ -f "$progsfile" ] && sed '/^[#H]/d' "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | sed '/^[#H]/d' > /tmp/progs.csv
 		fi
 	fi
 	totaltap=$(wc -l < /tmp/brewtap.csv)
 	while IFS=, read -r tag source comment; do
-		n=$((n+1))
+		s=$((n+1))
 		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
 		case "$tag" in
 			"M") maintap "$source" "$comment" ;;
@@ -220,7 +220,7 @@ installationloop() { \
 		n=$((n+1))
 		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
 		# Arch-Linux
-		if [ -f "/etc/arch-release" ]; then
+		if [[ -f "/etc/arch-release" || -f "/etc/artix-release" ]]; then
 			if [ "$RARBSTYPE" == "M" ]; then
 				case "$tag" in
 					"MM") maininstall "$program" "$comment" ;;
