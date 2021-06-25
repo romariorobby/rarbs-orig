@@ -1,6 +1,8 @@
 #Potential variables: timezone, lang and local
-rarbsUrl="https://raw.githubusercontent.com/romariorobby/rarbs/master/rarbs.sh"
-echo "----------------------"
+rarbsUrl="https://raw.githubusercontent.com/romariorobby/rarbs/master/rarbs"
+echo "======================"
+echo "========CHROOT========"
+echo "======================"
 echo "-----ROOT PASSWORD----"
 echo "----------------------"
 passwd
@@ -14,9 +16,9 @@ echo "LANG=en_US.UTF-8" >> /etc/locale.conf
 echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 echo "en_US ISO-8859-1" >> /etc/locale.gen
 hname="/etc/hostname"
-echo "127.0.0.1 localhost
-::1 localhost
-127.0.0.1   $(cat $hname).localdomain   $(cat $hname)\n" >> /etc/hosts
+printf "127.0.0.1\tlocalhost
+::1\t\tlocalhost
+127.0.0.1\t$(cat $hname).localdomain\t$(cat $hname)\n" >> /etc/hosts
 
 locale-gen
 NETMD=""
@@ -26,7 +28,7 @@ if [ $(cat archtype.tmp) = "X" ]; then
     pidof s6 && echo "Daemon Using s6" && NETMD="networkmanager-s6"
 fi
 
-pacman --noconfirm --needed -S networkmanager $(echo $NETMD) openssh
+pacman --noconfirm --needed -S networkmanager $(echo $NETMD) dialog openssh git
 
 if [ $(cat archtype.tmp) = "A" ];then
     systemctl enable NetworkManager
@@ -57,6 +59,9 @@ legacygrub(){
     pacman --noconfirm --needed -S grub && grub-install --target=i386-pc && grub-mkconfig -o /boot/grub/grub.cfg
 }
 
+echo "=========================================="
+echo "Installing GRUB"
+echo "=========================================="
 if [ $(cat installtype.tmp) = "U" ]; then
     usbuefigrub
 else
@@ -64,20 +69,22 @@ else
 fi
 
 if [ $(cat archtype.tmp) = "X" ]; then
-   pidof runit && dialog --colors --title "Important Note!"  --no-cancel "Run this:\n ln -s /etc/runit/sv/NetworkManager /run/runit/service" 8 70
-   printf '#Arch Repositories
-   [extra]
-   Include = /etc/pacman.d/mirrorlist-arch\n
-   [community]
-   Include = /etc/pacman.d/mirrorlist-arch\n
-   [multilib]
-   Include = /etc/pacman.d/mirrorlist-arch\n' >> /etc/pacman.conf && echo "Adding Arch Repositories...."
-   pacman -S artix-archlinux-support
-   pacman-key --init
-   pacman-key --populate artix
-   pacman -Syy
+    echo "=========================================="
+    echo "Installing Archlinux Repositories to Artix"
+    echo "=========================================="
+    pacman --noconfirm -S artix-archlinux-support
+    printf '\n#Arch Repositories
+[extra]
+Include = /etc/pacman.d/mirrorlist-arch\n
+[community]
+Include = /etc/pacman.d/mirrorlist-arch\n
+[multilib]
+Include = /etc/pacman.d/mirrorlist-arch\n' >> /etc/pacman.conf && echo "Adding Arch Repositories...."
+    pacman-key --init
+    pacman-key --populate artix
+    pacman -Syy
+    pidof runit >/dev/null 2>&1 && dialog --title "Important Note!"  --msgbox "Don't Forget to run this:\n Internet Access\n \n  ln -s /etc/runit/sv/NetworkManager /run/runit/service" 10 70
 fi
 
-pacman --noconfirm --needed -S dialog git
 rarbs() { curl $rarbsUrl > rarbs.sh && bash rarbs.sh ;}
 dialog --title "Install RARBS" --yesno "This install script will easily let you access Romario's Auto-Rice Boostrapping Scripts (RARBS) which automatically install a full Arch Linux .\n\nIf you'd like to install this, select yes, otherwise select no.\n\nRomario"  15 60 && rarbs

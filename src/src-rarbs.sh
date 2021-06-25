@@ -33,7 +33,6 @@ error() { clear; printf "ERROR:\\n%s\\n" "$1" >&2; exit 1;}
 welcomemsg() { \
 	dialog --title "Welcome!" --msgbox "Buggy Bootstrap\\n\\nThis script will automatically install a fully-featured $(echo $OS) desktop.\\n\\n-Romario" 10 60
 	dialog --colors --title "Important Note!" --yes-label "All ready!" --no-label "Return..." --yesno "If you running GNU/LINUX(Arch), Be sure the computer you are using has current pacman updates and refreshed Arch keyrings.\\n\\nIf it does not, the installation of some programs might fail." 8 70
-	mkdir tmp
 	}
 
 rarbtype() { \
@@ -206,7 +205,7 @@ installationloop() { \
 	fi
 	totaltap=$(wc -l < /tmp/brewtap.csv)
 	while IFS=, read -r tag source comment; do
-		s=$((n+1))
+		s=$((s+1))
 		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
 		case "$tag" in
 			"M") maintap "$source" "$comment" ;;
@@ -223,13 +222,13 @@ installationloop() { \
 		if [[ -f "/etc/arch-release" || -f "/etc/artix-release" ]]; then
 			if [ "$RARBSTYPE" == "M" ]; then
 				case "$tag" in
-					"MM") maininstall "$program" "$comment" ;;
-					"AM") aurinstall "$program" "$comment" ;;
+					"M") maininstall "$program" "$comment" ;;
+					"A") aurinstall "$program" "$comment" ;;
 				esac
 			else
 				case "$tag" in
-					"M") maininstall "$program" "$comment" ;;
-					"A") aurinstall "$program" "$comment" ;;
+					"M"|"MO") maininstall "$program" "$comment" ;;
+					"A"|"AO") aurinstall "$program" "$comment" ;;
 				esac
 			fi
 		# MacOS
