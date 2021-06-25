@@ -14,7 +14,7 @@ esac done
 [ -z "$sshdotfilesrepo" ] && sshdotfilesrepo="git@github.com:romariorobby/dotfiles.git"
 [ -z "$progsfile" ] && progsfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/progs.csv"
 [ -z "$brewtapfile" ] && brewtapfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/opt/brewtap.csv"
-[ -z "$aurhelper" ] && aurhelper="paru-bin"
+[ -z "$aurhelper" ] && aurhelper="paru"
 
 installpkg() { \
 	if [[ -f "/etc/arch-release" ||  -f "/etc/artix-release" ]]; then
@@ -24,6 +24,33 @@ installpkg() { \
 	fi
 }
 
+wmpick() { \
+	dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select Windows Manager OR Desktop Environment: " 15 60 3 \
+		A "Awesome" on \
+		D "DWM" off \
+		G "GNOME(Not available yet)" off \
+		X "XFCE(Not available yet)" off \
+		K "KDE (Not available yet)" off 2> wmtype
+		WMTYPE="$(cat wmtype)"
+}
+wminstall() { \
+	if [ $WMTYPE == "A" ]; then
+		wmdir="/home/$name/.config/awesome"
+		pacman --noconfirm -S awesome
+		if [ ! -d "$wmdir" ];then
+			mkdir $wmdir
+			cp /etc/xdg/awesome/rc.lua $wmdir
+			# change default term,editor, and close binding
+			sed -i 's/xterm/kitty/g;s/nano/vim/g;s/"c"/"q"/g' $wmdir/rc.lua
+		fi
+
+	elif [ $WMTYPE == "D" ];then
+		git clone https://github.com/romariorobby/dwm
+		cd dwm && make clean install
+	else
+		echo "NO WM INSTALLED!"
+	fi
+}
 tapbrew(){ \
 	brew tap "$1" >/dev/null 2>&1
 }
@@ -33,7 +60,6 @@ error() { clear; printf "ERROR:\\n%s\\n" "$1" >&2; exit 1;}
 welcomemsg() { \
 	dialog --title "Welcome!" --msgbox "Buggy Bootstrap\\n\\nThis script will automatically install a fully-featured $(echo $OS) desktop.\\n\\n-Romario" 10 60
 	dialog --colors --title "Important Note!" --yes-label "All ready!" --no-label "Return..." --yesno "If you running GNU/LINUX(Arch), Be sure the computer you are using has current pacman updates and refreshed Arch keyrings.\\n\\nIf it does not, the installation of some programs might fail." 8 70
-	mkdir tmp
 	}
 
 rarbtype() { \
@@ -206,7 +232,7 @@ installationloop() { \
 	fi
 	totaltap=$(wc -l < /tmp/brewtap.csv)
 	while IFS=, read -r tag source comment; do
-		s=$((n+1))
+		s=$((s+1))
 		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
 		case "$tag" in
 			"M") maintap "$source" "$comment" ;;
@@ -223,13 +249,15 @@ installationloop() { \
 		if [[ -f "/etc/arch-release" || -f "/etc/artix-release" ]]; then
 			if [ "$RARBSTYPE" == "M" ]; then
 				case "$tag" in
-					"MM") maininstall "$program" "$comment" ;;
-					"AM") aurinstall "$program" "$comment" ;;
+					"M") maininstall "$program" "$comment" ;;
+					"A") aurinstall "$program" "$comment" ;;
+					"G") gitmakeinstall "$program" "$comment" ;;
 				esac
 			else
 				case "$tag" in
-					"M") maininstall "$program" "$comment" ;;
-					"A") aurinstall "$program" "$comment" ;;
+					"M"|"MO") maininstall "$program" "$comment" ;;
+					"A"|"AO") aurinstall "$program" "$comment" ;;
+					"G"|"GO") gitmakeinstall "$program" "$comment" ;;
 				esac
 			fi
 		# MacOS
@@ -256,7 +284,7 @@ installationloop() { \
 			case "$tag" in
 				"P"|"PO") pipinstall "$program" "$comment" ;;
 				"N"|"NO") npminstall "$program" "$comment" ;;
-				# "C"|"CO") chezmoiinstall "$program" "$comment" ;;
+				# "G"|"CO") chezmoiinstall "$program" "$comment" ;;
 				# "G"|"GO") gitmakeinstalltemp "$program" "$comment" ;;
 			esac
 		fi
@@ -299,7 +327,7 @@ symlink(){ \
 # TODO: Complete Cleanup
 cleanup() { \
 	dialog --title "Cleanup" --yesno "Do you want clean all caches?" 8 90
-	mv rarbstype ~/.local/share
+	mv rarbstype /home/$name/.local/share
 	
 
 }
