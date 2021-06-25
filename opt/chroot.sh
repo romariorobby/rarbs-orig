@@ -1,5 +1,6 @@
 #Potential variables: timezone, lang and local
 rarbsUrl="https://raw.githubusercontent.com/romariorobby/rarbs/master/rarbs"
+gitrarbsUrl="https://github.com/romariorobby/rarbs"
 echo "======================"
 echo "========CHROOT========"
 echo "======================"
@@ -86,5 +87,7 @@ Include = /etc/pacman.d/mirrorlist-arch\n' >> /etc/pacman.conf && echo "Adding A
     pidof runit >/dev/null 2>&1 && dialog --title "Important Note!"  --msgbox "Don't Forget to run this:\n Internet Access\n \n  ln -s /etc/runit/sv/NetworkManager /run/runit/service" 10 70
 fi
 
+gitrarbs() { git clone $gitrarbsUrl && cd rarbs && bash rarbs;}
 rarbs() { curl $rarbsUrl > rarbs.sh && bash rarbs.sh ;}
-dialog --title "Install RARBS" --yesno "This install script will easily let you access Romario's Auto-Rice Boostrapping Scripts (RARBS) which automatically install a full Arch Linux .\n\nIf you'd like to install this, select yes, otherwise select no.\n\nRomario"  15 60 && rarbs
+dialog --title "Install RARBS" --yesno "This install script will easily let you access Romario's Auto-Rice Boostrapping Scripts (RARBS) which automatically install a full Arch Linux .\n\nIf you'd like to install this, select yes, otherwise select no.\n\nRomario"  15 60 && gitrarbs
+

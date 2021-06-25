@@ -14,7 +14,7 @@ esac done
 [ -z "$sshdotfilesrepo" ] && sshdotfilesrepo="git@github.com:romariorobby/dotfiles.git"
 [ -z "$progsfile" ] && progsfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/progs.csv"
 [ -z "$brewtapfile" ] && brewtapfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/opt/brewtap.csv"
-[ -z "$aurhelper" ] && aurhelper="paru-bin"
+[ -z "$aurhelper" ] && aurhelper="paru"
 
 installpkg() { \
 	if [[ -f "/etc/arch-release" ||  -f "/etc/artix-release" ]]; then
@@ -24,6 +24,33 @@ installpkg() { \
 	fi
 }
 
+wmpick() { \
+	dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select Windows Manager OR Desktop Environment: " 15 60 3 \
+		A "Awesome" on \
+		D "DWM" off \
+		G "GNOME(Not available yet)" off \
+		X "XFCE(Not available yet)" off \
+		K "KDE (Not available yet)" off 2> wmtype
+		WMTYPE="$(cat wmtype)"
+}
+wminstall() { \
+	if [ $WMTYPE == "A" ]; then
+		wmdir="/home/$name/.config/awesome"
+		pacman --noconfirm -S awesome
+		if [ ! -d "$wmdir" ];then
+			mkdir $wmdir
+			cp /etc/xdg/awesome/rc.lua $wmdir
+			# change default term,editor, and close binding
+			sed -i 's/xterm/kitty/g;s/nano/vim/g;s/"c"/"q"/g' $wmdir/rc.lua
+		fi
+
+	elif [ $WMTYPE == "D" ];then
+		git clone https://github.com/romariorobby/dwm
+		cd dwm && make clean install
+	else
+		echo "NO WM INSTALLED!"
+	fi
+}
 tapbrew(){ \
 	brew tap "$1" >/dev/null 2>&1
 }
@@ -224,11 +251,13 @@ installationloop() { \
 				case "$tag" in
 					"M") maininstall "$program" "$comment" ;;
 					"A") aurinstall "$program" "$comment" ;;
+					"G") gitmakeinstall "$program" "$comment" ;;
 				esac
 			else
 				case "$tag" in
 					"M"|"MO") maininstall "$program" "$comment" ;;
 					"A"|"AO") aurinstall "$program" "$comment" ;;
+					"G"|"GO") gitmakeinstall "$program" "$comment" ;;
 				esac
 			fi
 		# MacOS
@@ -255,7 +284,7 @@ installationloop() { \
 			case "$tag" in
 				"P"|"PO") pipinstall "$program" "$comment" ;;
 				"N"|"NO") npminstall "$program" "$comment" ;;
-				# "C"|"CO") chezmoiinstall "$program" "$comment" ;;
+				# "G"|"CO") chezmoiinstall "$program" "$comment" ;;
 				# "G"|"GO") gitmakeinstalltemp "$program" "$comment" ;;
 			esac
 		fi
@@ -298,7 +327,7 @@ symlink(){ \
 # TODO: Complete Cleanup
 cleanup() { \
 	dialog --title "Cleanup" --yesno "Do you want clean all caches?" 8 90
-	mv rarbstype ~/.local/share
+	mv rarbstype /home/$name/.local/share
 	
 
 }
