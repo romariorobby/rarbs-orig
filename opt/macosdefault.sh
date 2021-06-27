@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+echo "Activating SKHD services..."
+[ -x "$(command -v "skhd")" ] && brew services start skhd
+
 echo "Set Default style to Dark Mode"
 defaults write NSGlobalDomain AppleInterfaceStyle Dark
 echo "Set Default Locale to en_US"

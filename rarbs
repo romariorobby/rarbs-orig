@@ -81,14 +81,15 @@ main() { \
 		dialog --title "RARBS Installation" --infobox "Finally, installing \`libxft-bgra\` to enable color emoji in suckless software without crashes." 5 70
 		yes | sudo -u "$name" $aurhelper -S libxft-bgra-git >/dev/null 2>&1
 
+
 		# Most important command! Get rid of the beep!
 		systembeepoff
-
-		# chezgitrepo "$dotfilesrepo"
 
 		# Make zsh the default shell for the user.
 		chsh -s /bin/zsh "$name" >/dev/null 2>&1
 		sudo -u "$name" mkdir -p "/home/$name/.cache/zsh/"
+
+		chezmoiinstall "$dotfilesrepo"
 
 		# Tap to click
 		# TODO: Check  with `dmidecode --string chassis-type` to know if you're runing laptop or desktop

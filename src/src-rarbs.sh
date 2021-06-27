@@ -106,6 +106,7 @@ getbwuserandpass() { \
 	done ;}
 
 addbwuserandpass () {
+	SECRET=""
 	dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
 	[ -x "$(command -v "bw")" ] || manualinstall bitwarden-cli-bin >/dev/null 2>&1
 	bwdir="/home/$name/.local/share/bitwarden"; mkdir -p "$bwdir"; chown -R "$name":wheel "$(dirname "$bwdir")"
@@ -116,6 +117,7 @@ addbwuserandpass () {
 	dialog --infobox "Adding Environment Variables Locally..." 4 50
 	export BW_MASTER=$(echo "$bwdir/key") || error "FAILED ADDING BW_MASTER"
 	export BW_SESSION="$(bw unlock $BW_MASTER 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/')" || error "FAILED BW_SESSION"
+	SECRET=1
 	}
 
 preinstallmsg() { \
@@ -150,10 +152,24 @@ maintap() {
 	dialog --title "RARBS Homebrew Source" --infobox "Adding \`$1\` to Homebrew ($s of $totaltap). $1 $2" 5 70
 	tapbrew "$1"
 }
-chezgitrepo() { # Clone and install dotfiles using chezmoi
+
+# install dotfiles using chezmoi
+chezmoiinstalldot(){ \
+	if [[ $RARBSTYPE == "M" && -z $SECRET ]];then
+		sudo -u "$name" DOTMIN=1 chezmoi init --apply "$1"
+	else
+		if [ ! -z $SECRET ];then
+			sudo -u "$name" SECRETOFF=1 chezmoi init --apply "$1"
+		else
+		  sudo -u "$name" chezmoi init --apply "$1"
+		fi
+	fi
+}
+
+chezmoiinstall() {
 	dialog --infobox "Downloading and installing config files..." 4 60
 	[ -x "$(command -v "chezmoi")" ] || installpkg chezmoi >/dev/null 2>&1
-	sudo -u "$name" chezmoi init --apply "$1"
+	chezmoiinstalldot "$1"
 	}
 
 gitmakeinstall() {
@@ -165,6 +181,8 @@ gitmakeinstall() {
 	make >/dev/null 2>&1
 	make install >/dev/null 2>&1
 	cd /tmp || return 1 ;}
+
+# FIXME: remove func (deprecated)
 gitmakeinstalltemp() {
 	# progname="$(basename "$1" .git)"
 	dest="$repodir"
@@ -277,15 +295,12 @@ installationloop() { \
 			case "$tag" in
 				"P") pipinstall "$program" "$comment" ;;
 				"N") npminstall "$program" "$comment" ;;
-				# "C") chezmoiinstall "$program" "$comment" ;;
-				# "G") gitmakeinstalltemp "$program" "$comment" ;;
+				# "G") gitmakeinstall "$program" "$comment" ;;
 			esac
 		else
 			case "$tag" in
 				"P"|"PO") pipinstall "$program" "$comment" ;;
 				"N"|"NO") npminstall "$program" "$comment" ;;
-				# "G"|"CO") chezmoiinstall "$program" "$comment" ;;
-				# "G"|"GO") gitmakeinstalltemp "$program" "$comment" ;;
 			esac
 		fi
 	done < /tmp/progs.csv ;}
