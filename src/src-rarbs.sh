@@ -20,6 +20,7 @@ installpkg() { \
 	if [[ -f "/etc/arch-release" ||  -f "/etc/artix-release" ]]; then
 		pacman --noconfirm --needed -S "$1" >/dev/null 2>&1
 	elif [ "$(uname)" == "Darwin" ]; then
+		echo "$brewinstalled" | grep -q "^$1$" && return 1
 		brew install "$1" >/dev/null 2>&1
 	fi
 }
@@ -43,7 +44,6 @@ wminstall() { \
 			# change default term,editor, and close binding
 			sed -i 's/xterm/kitty/g;s/nano/vim/g;s/"c"/"q"/g' $wmdir/rc.lua
 		fi
-
 	elif [ $WMTYPE == "D" ];then
 		git clone https://github.com/romariorobby/dwm
 		cd dwm && make clean install
@@ -105,15 +105,23 @@ getbwuserandpass() { \
 		bwpass2=$(dialog --no-cancel --inputbox "Retype password." 10 60 3>&1 1>&2 2>&3 3>&1)
 	done ;}
 
-addbwuserandpass () {
+addbwuserandpass () { \
 	SECRET=""
-	dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
-	[ -x "$(command -v "bw")" ] || manualinstall bitwarden-cli-bin >/dev/null 2>&1
-	bwdir="/home/$name/.local/share/bitwarden"; mkdir -p "$bwdir"; chown -R "$name":wheel "$(dirname "$bwdir")"
-	[ -f "$bwdir/email" -a -f "$bwdir/key"  ] && cp $bwdir/email $bwdir/email.bak && cp $bwdir/key $bwdir/email.bak
-	sudo -u "$name" echo $bwname > $bwdir/email && sudo -u "$name" echo $bwpass1 > $bwdir/key
-	touch $bwdir/clientid && touch $bwdir/clientsecret
-	sudo -u "$name" bw login $(echo $bwname $bwpass1)
+	if [ "$(uname)" == "Darwin" ];then
+		dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
+		[ -x "$(command -v "bw")" ] || installpkg bitwarden-cli >/dev/null 2>&1
+		bwdir="$HOME/.local/share/bitwarden"; mkdir -p "$bwdir"
+		echo $bwname > $bwdir/email && echo $bwpass1 > $bwdir/key
+		bw login $(echo $bwname $bwpass1)
+	else
+		dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
+		[ -x "$(command -v "bw")" ] || aurinstall bitwarden-cli-bin >/dev/null 2>&1
+		bwdir="/home/$name/.local/share/bitwarden"; mkdir -p "$bwdir"; chown -R "$name":wheel "$(dirname "$bwdir")"
+		[ -f "$bwdir/email" -a -f "$bwdir/key"  ] && cp $bwdir/email $bwdir/email.bak && cp $bwdir/key $bwdir/email.bak
+		sudo -u "$name" echo $bwname > $bwdir/email && sudo -u "$name" echo $bwpass1 > $bwdir/key
+		touch $bwdir/clientid && touch $bwdir/clientsecret
+		sudo -u "$name" bw login $(echo $bwname $bwpass1)
+	fi
 	dialog --infobox "Adding Environment Variables Locally..." 4 50
 	export BW_MASTER=$(echo "$bwdir/key") || error "FAILED ADDING BW_MASTER"
 	export BW_SESSION="$(bw unlock $BW_MASTER 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/')" || error "FAILED BW_SESSION"
@@ -155,13 +163,38 @@ maintap() {
 
 # install dotfiles using chezmoi
 chezmoiinstalldot(){ \
-	if [[ $RARBSTYPE == "M" && -z $SECRET ]];then
-		sudo -u "$name" DOTMIN=1 chezmoi init --apply "$1"
-	else
-		if [ ! -z $SECRET ];then
-			sudo -u "$name" SECRETOFF=1 chezmoi init --apply "$1"
+	# depend on Bitwarden and Chezmoi
+	if [ "$RARBSTYPE" == "M" ]; then
+		if [ -z $SECRET ];then
+			if [ "$(uname)" == "Darwin" ]; then
+				DOTMIN=1 SECRETOFF=1 chezmoi init --apply "$1"
+			else
+				sudo -u "$name" DOTMIN=1 SECRETOFF=1 chezmoi init --apply "$1"
+			fi
+			echo "MINIMAL and NO SECRET"
 		else
-		  sudo -u "$name" chezmoi init --apply "$1"
+			if [ "$(uname)" == "Darwin" ]; then
+				DOTMIN=1 chezmoi init --apply "$1"
+			else
+				sudo -u "$name" DOTMIN=1 chezmoi init --apply "$1"
+			fi
+			echo "MINIMAL and SECRET"
+		fi
+	else
+		if [ -z $SECRET ];then
+			if [ "$(uname)" == "Darwin" ]; then
+				SECRETOFF=1 chezmoi init --apply "$1"
+			else
+				sudo -u "$name" SECRETOFF=1 chezmoi init --apply "$1"
+			fi
+			echo "FULL and NO SECRET"
+		else
+			if [ "$(uname)" == "Darwin" ]; then
+				chezmoi init --apply "$1"
+			else
+				sudo -u "$name" chezmoi init --apply "$1"
+			fi
+			echo "FULL and SECRET"
 		fi
 	fi
 }
@@ -260,6 +293,7 @@ installationloop() { \
 	# ([ -f "$progsfile" ] && cp "$progsfile" /tmp/progs.csv) || curl -lLs "$progsfile" | sed '/^-\|*\|#/d;/^|-/d' > /tmp/progs.csv
 	total=$(wc -l < /tmp/progs.csv)
 	aurinstalled=$(pacman -Qqm)
+	brewinstalled=$(brew list | uniq)
 	while IFS=, read -r tag program comment; do
 		n=$((n+1))
 		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"

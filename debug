@@ -1,8 +1,4 @@
 #!/bin/sh
-
 gitrarbsUrl="https://github.com/romariorobby/rarbs"
 source src/src-rarbs.sh
 welcomemsg || error "User Exited"
-wmpick || error "WMTYPE error"
-wminstall || error "WM"
-
