@@ -105,14 +105,19 @@ getbwuserandpass() { \
 		bwpass2=$(dialog --no-cancel --inputbox "Retype password." 10 60 3>&1 1>&2 2>&3 3>&1)
 	done ;}
 
+# TODO: Figure out how to use bw-cli with temporarly session
 addbwuserandpass () { \
 	SECRET=""
 	if [ "$(uname)" == "Darwin" ];then
 		dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
 		[ -x "$(command -v "bw")" ] || installpkg bitwarden-cli >/dev/null 2>&1
-		bwdir="$HOME/.local/share/bitwarden"; mkdir -p "$bwdir"
-		echo $bwname > $bwdir/email && echo $bwpass1 > $bwdir/key
-		bw login $(echo $bwname $bwpass1)
+		bwdirmac="$HOME/.local/share/bitwarden"; mkdir -p "$bwdirmac"
+		dialog --infobox "Adding Email Adress and Password..." 4 50
+		echo $bwname > $bwdirmac/email && echo $bwpass1 > $bwdirmac/key
+		dialog --infobox "Login on Bitwarden..." 4 50
+		bw logout || bw login --raw $bwname $bwpass1 > $bwdirmac/session
+		dialog --infobox "Adding Environment Variables Locally...\n $(cat $bwdirmac/session)" 4 50
+		[ ! -z "$bwdirmac/session" ] && export BW_SESSION=$(cat $bwdirmac/session) && SECRET=1
 	else
 		dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
 		[ -x "$(command -v "bw")" ] || aurinstall bitwarden-cli-bin >/dev/null 2>&1
@@ -120,12 +125,11 @@ addbwuserandpass () { \
 		[ -f "$bwdir/email" -a -f "$bwdir/key"  ] && cp $bwdir/email $bwdir/email.bak && cp $bwdir/key $bwdir/email.bak
 		sudo -u "$name" echo $bwname > $bwdir/email && sudo -u "$name" echo $bwpass1 > $bwdir/key
 		touch $bwdir/clientid && touch $bwdir/clientsecret
-		sudo -u "$name" bw login $(echo $bwname $bwpass1)
+		# sudo -u "$name" bw login --raw $bwname $bwpass1
+		dialog --infobox "Login on Bitwarden & Adding Environment Variables Locally...\n\n $(cat $bwdirmac/session)" 10 50
+		export BW_SESSION=$(bw login --raw $bwname $bwpass1)
+		echo $BW_SESSIN > $bwdir/session
 	fi
-	dialog --infobox "Adding Environment Variables Locally..." 4 50
-	export BW_MASTER=$(echo "$bwdir/key") || error "FAILED ADDING BW_MASTER"
-	export BW_SESSION="$(bw unlock $BW_MASTER 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/')" || error "FAILED BW_SESSION"
-	SECRET=1
 	}
 
 preinstallmsg() { \
@@ -292,8 +296,8 @@ installationloop() { \
 	# TODO: Make Read from org file del/IFS="|"
 	# ([ -f "$progsfile" ] && cp "$progsfile" /tmp/progs.csv) || curl -lLs "$progsfile" | sed '/^-\|*\|#/d;/^|-/d' > /tmp/progs.csv
 	total=$(wc -l < /tmp/progs.csv)
-	aurinstalled=$(pacman -Qqm)
-	brewinstalled=$(brew list | uniq)
+	[[ -f "/etc/arch-release" || -f "/etc/artix-release" ]] && aurinstalled=$(pacman -Qqm)
+	[ "$(uname)" == "Darwin" ] && brewinstalled=$(brew list | uniq)
 	while IFS=, read -r tag program comment; do
 		n=$((n+1))
 		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
