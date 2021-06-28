@@ -376,6 +376,13 @@ symlink(){ \
 		ln -sf /home/$name/.config/x11/xprofile /home/$name/.xprofile && echo "Symlink X11"
 	fi
 }
+# TODO: Check this Post browserpass install
+passins(){ \
+	if [ "$(uname)" == "Darwin" ]; then
+		[ ! -d "/usr/local/opt/browserpass" ] && installpkg bitwarden-cli >/dev/null 2>&1 || PREFIX='/usr/local/opt/browserpass' make hosts-BROWSER-user -f '/usr/local/opt/browserpass/lib/browserpass/Makefile'
+	fi
+
+}
 
 # TODO: Complete Cleanup
 cleanup() { \

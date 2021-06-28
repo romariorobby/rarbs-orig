@@ -6,6 +6,7 @@
 #
 #TAG,NAME IN REPO (or git url),PURPOSE (should be a verb phrase to sound right while installing)
 A,bitwarden-bin, "Bitwarden Password Manager"
+AO,browserpass, "is a Simple Unix Password Manager"
 A,bitwarden-cli-bin, "Bitwarden Password Manager [CLI]"
 A,brave-bin,"is an elegant browser with built-in adblocking, tor and other features."
 A,lf,"is an extensive terminal file manager."
@@ -51,6 +52,7 @@ GX,git@github.com:romariorobby/sucklessaqs.git, "[SSH] is my custom build of AIO
 GX,https://github.com/romariorobby/sucklessaqs.git, "[HTTPS] is my custom build of AIO suckless"
 H,android-platform-tools, "is Wrapper Android SDK (ADB)"
 H,brave-browser, "is an elegant browser with built-in adblocking, tor and other features."
+H,browserpass, "is a Simple Unix Password Manager"
 H,chezmoi, "dotfiles management"
 H,coreutils, "General Unix tools"
 H,fzf, "is a fuzzy finder tool."
