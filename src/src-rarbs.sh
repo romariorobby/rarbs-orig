@@ -1,7 +1,7 @@
 #!/bin/sh
 
 while getopts ":a:r:b:p:s:h" o; do case "${o}" in
-	h) printf "Optional arguments for custom use:\\n  -r: Dotfiles repository (local file or url)\\n  -p: Dependencies and programs csv (local file or url)\\n  -s: Homebrew Source(tap)\\n  -a: AUR helper (must have pacman-like syntax)\\n  -h: Show this message\\n" && exit 1 ;;
+	h) printf "Optional arguments for custom use:\\n  -r: Dotfiles repository (local file or url)\\n  -p: Dependencies and programs csv (local file or url)\\n  -s: Homebrew Source (tap)\\n  -a: AUR helper (must have pacman-like syntax) (paru by default)\\n  -h: Show this message\\n" && exit 1 ;;
 	r) dotfilesrepo=${OPTARG} && chezmoi git ls-remote "$dotfilesrepo" || exit 1 ;;
 	b) repobranch=${OPTARG} ;;
 	p) progsfile=${OPTARG} ;;
@@ -15,6 +15,7 @@ esac done
 [ -z "$progsfile" ] && progsfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/progs.csv"
 [ -z "$brewtapfile" ] && brewtapfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/opt/brewtap.csv"
 [ -z "$aurhelper" ] && aurhelper="paru"
+[ -z "$is_secret" ] && is_secret=""
 
 installpkg() { \
 	if [[ -f "/etc/arch-release" ||  -f "/etc/artix-release" ]]; then
@@ -25,6 +26,7 @@ installpkg() { \
 	fi
 }
 
+# TODO: Testing this func
 wmpick() { \
 	dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select Windows Manager OR Desktop Environment: " 15 60 3 \
 		A "Awesome" on \
@@ -89,7 +91,7 @@ usercheck() { \
 	}
 
 isuserbw() { \
-	dialog --title "Install Bitwarden" --yesno "Do you want login bitwarden?" 8 90 && getbwuserandpass && addbwuserandpass || clear
+	dialog --title "Install Bitwarden" --yesno "Do you want login bitwarden?" 8 90 && getbwuserandpass && is_secret=1 && addbwuserandpass || clear
 }
 
 getbwuserandpass() { \
@@ -105,31 +107,29 @@ getbwuserandpass() { \
 		bwpass2=$(dialog --no-cancel --inputbox "Retype password." 10 60 3>&1 1>&2 2>&3 3>&1)
 	done ;}
 
-# TODO: Figure out how to use bw-cli with temporarly session
+# TODO: Cleanup
 addbwuserandpass () { \
-	SECRET=""
 	if [ "$(uname)" == "Darwin" ];then
 		dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
 		[ -x "$(command -v "bw")" ] || installpkg bitwarden-cli >/dev/null 2>&1
 		bwdirmac="$HOME/.local/share/bitwarden"; mkdir -p "$bwdirmac"
-		dialog --infobox "Adding Email Adress and Password..." 4 50
-		echo $bwname > $bwdirmac/email && echo $bwpass1 > $bwdirmac/key
-		dialog --infobox "Login on Bitwarden..." 4 50
-		bw logout || bw login --raw $bwname $bwpass1 > $bwdirmac/session
-		dialog --infobox "Adding Environment Variables Locally...\n $(cat $bwdirmac/session)" 4 50
-		[ ! -z "$bwdirmac/session" ] && export BW_SESSION=$(cat $bwdirmac/session) && SECRET=1
+		# dialog --infobox "Adding Email Adress and Password..." 4 50
+		# echo $bwname > $bwdirmac/email && echo $bwpass1 > $bwdirmac/key
+		# ses=$(bw login $bwname $bwpass1 2>/dev/null | grep 'export' | sed -E 's/.*export BW_SESSION="(.*==)"$/\1/')
 	else
 		dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
 		[ -x "$(command -v "bw")" ] || aurinstall bitwarden-cli-bin >/dev/null 2>&1
 		bwdir="/home/$name/.local/share/bitwarden"; mkdir -p "$bwdir"; chown -R "$name":wheel "$(dirname "$bwdir")"
+		# dialog --infobox "Adding Email Adress and Password..." 4 50
 		[ -f "$bwdir/email" -a -f "$bwdir/key"  ] && cp $bwdir/email $bwdir/email.bak && cp $bwdir/key $bwdir/email.bak
-		sudo -u "$name" echo $bwname > $bwdir/email && sudo -u "$name" echo $bwpass1 > $bwdir/key
-		touch $bwdir/clientid && touch $bwdir/clientsecret
+		# sudo -u "$name" echo $bwname > $bwdir/email && sudo -u "$name" echo $bwpass1 > $bwdir/key
 		# sudo -u "$name" bw login --raw $bwname $bwpass1
-		dialog --infobox "Login on Bitwarden & Adding Environment Variables Locally...\n\n $(cat $bwdirmac/session)" 10 50
-		export BW_SESSION=$(bw login --raw $bwname $bwpass1)
-		echo $BW_SESSIN > $bwdir/session
+		# dialog --infobox "Login on Bitwarden & Adding Environment Variables Locally..." 10 50
+		# export BW_SESSION=$(sudo -u "$name" bw login --raw $bwname $bwpass1)
 	fi
+	dialog --infobox "Login on Bitwarden & Adding Environment Variables Locally..." 10 50
+	bw logout # just in case
+	export BW_SESSION=$(bw login $bwname $bwpass1 --raw)
 	}
 
 preinstallmsg() { \
@@ -169,7 +169,7 @@ maintap() {
 chezmoiinstalldot(){ \
 	# depend on Bitwarden and Chezmoi
 	if [ "$RARBSTYPE" == "M" ]; then
-		if [ -z $SECRET ];then
+		if [ -z $is_secret ];then
 			if [ "$(uname)" == "Darwin" ]; then
 				DOTMIN=1 SECRETOFF=1 chezmoi init --apply "$1"
 			else
@@ -185,7 +185,7 @@ chezmoiinstalldot(){ \
 			echo "MINIMAL and SECRET"
 		fi
 	else
-		if [ -z $SECRET ];then
+		if [ -z $is_secret ];then
 			if [ "$(uname)" == "Darwin" ]; then
 				SECRETOFF=1 chezmoi init --apply "$1"
 			else
@@ -387,8 +387,16 @@ passins(){ \
 # TODO: Complete Cleanup
 cleanup() { \
 	dialog --title "Cleanup" --yesno "Do you want clean all caches?" 8 90
-	mv rarbstype /home/$name/.local/share
-	
+	# This is just for aestetic neofetch :)
+	if [ "$(uname)" == "Darwin" ]; then
+		# mv rarbstype $HOME/.local/share
+		[ "$RARBSTYPE" == "M" ] && echo "Minimal - " > $HOME/.local/share/rarbstype || echo "Full - " > $HOME/.local/share/rarbstype
+		[ ! -z "$is_secret" ] && echo "(Secret)" >> $HOME/.local/share/rarbstype || echo "(No Secret)" >> $HOME/.local/share/rarbstype
+	else
+		[ "$RARBSTYPE" == "M" ] && echo "Minimal - " > /home/$name/.local/share/rarbstype || echo "Full - " > $HOME/.local/share/rarbstype
+		[ ! -z "$is_secret" ] && echo "(Secret)" >> /home/$name/.local/share/rarbstype || echo "(No Secret)" >> $HOME/.local/share/rarbstype
+	fi
+	rm rarbstype wmtype
 
 }
 
