@@ -15,6 +15,7 @@ esac done
 [ -z "$progsfile" ] && progsfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/progs.csv"
 [ -z "$brewtapfile" ] && brewtapfile="https://raw.githubusercontent.com/romariorobby/rarbs/master/opt/brewtap.csv"
 [ -z "$aurhelper" ] && aurhelper="paru"
+# var for Password Manager (Bitwarden,pass)
 [ -z "$is_secret" ] && is_secret=""
 
 installpkg() { \
@@ -26,7 +27,7 @@ installpkg() { \
 	fi
 }
 
-# TODO: Testing this func
+# TODO: Testing this func shit
 wmpick() { \
 	dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select Windows Manager OR Desktop Environment: " 15 60 3 \
 		A "Awesome" on \
@@ -36,19 +37,22 @@ wmpick() { \
 		K "KDE (Not available yet)" off 2> wmtype
 		WMTYPE="$(cat wmtype)"
 }
+
 wminstall() { \
 	if [ $WMTYPE == "A" ]; then
-		wmdir="/home/$name/.config/awesome"
+		awmdir="/home/$name/.config/awesome"
 		pacman --noconfirm -S awesome
-		if [ ! -d "$wmdir" ];then
-			mkdir $wmdir
-			cp /etc/xdg/awesome/rc.lua $wmdir
+		if [ ! -d "$awmdir" ];then
+			sudo -u "$name" mkdir $awmdir
+			sudo -u "$name" cp /etc/xdg/awesome/rc.lua $awmdir
 			# change default term,editor, and close binding
-			sed -i 's/xterm/kitty/g;s/nano/vim/g;s/"c"/"q"/g' $wmdir/rc.lua
+			sudo -u "$name" sed -i 's/xterm/kitty/g;s/nano/vim/g;s/"c"/"q"/g' $awmdir/rc.lua
 		fi
 	elif [ $WMTYPE == "D" ];then
-		git clone https://github.com/romariorobby/dwm
-		cd dwm && make clean install
+		dwmdir="/home/$name/.local/src"
+		[ ! -d "$dwmdir" ] && sudo -u "$name" mkdir $dwmdir
+		sudo -u "$name" git clone https://github.com/romariorobby/dwm $dwmdir
+		cd $dwmdir/dwm && make clean install
 	else
 		echo "NO WM INSTALLED!"
 	fi
@@ -90,14 +94,47 @@ usercheck() { \
 	dialog --colors --title "WARNING!" --yes-label "CONTINUE" --no-label "No wait..." --yesno "The user \`$name\` already exists on this system. RARBS can install for a user already existing, but it will \\Zboverwrite\\Zn any conflicting settings/dotfiles on the user account.\\n\\nRARBS will \\Zbnot\\Zn overwrite your user files, documents, videos, etc., so don't worry about that, but only click <CONTINUE> if you don't mind your settings being overwritten.\\n\\nNote also that RARBS will change $name's password to the one you just gave." 14 70
 	}
 
+# FIXME: Wait for Chezmoi release for `passRaw` then i can use both bitwarden and pass as alternative
 isuserbw() { \
-	dialog --title "Install Bitwarden" --yesno "Do you want login bitwarden?" 8 90 && getbwuserandpass && is_secret=1 && addbwuserandpass || clear
+	#dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && addbwuserandpass || isuserpass
+	dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && addbwuserandpass || clear
+}
+
+isuserpass() { \
+	# https://github.com/fpco/best-practices/blob/master/password-store.md
+	dialog --colors --title "Install Pass" --yesno "Do you want login \\Z0\\ZbPass\\Z0\\Zn? " 6 90 && getpassuserandpass && is_secret=1 && addpassuserandpass || clear
+}
+
+getpassuserandpass(){ \
+	[ -x "$(command -v "pass")" ] || installpkg pass
+	passname=$(dialog --colors --inputbox "First, please enter a username for \\Zbpass\\Zn repo." 10 60 3>&1 1>&2 2>&3 3>&1) || exit 1
+	pass1=$(dialog --colors --no-cancel --inputbox "Enter a password for that user(\\Zb$passname\\Zn)." 10 60 3>&1 1>&2 2>&3 3>&1)
+	pass2=$(dialog --no-cancel --inputbox "Retype password." 10 60 3>&1 1>&2 2>&3 3>&1)
+	while ! [ "$pass1" = "$pass2" ]; do
+		unset pass2
+		pass1=$(dialog --no-cancel --inputbox "Passwords do not match.\\n\\nEnter password again." 10 60 3>&1 1>&2 2>&3 3>&1)
+		pass2=$(dialog --no-cancel --inputbox "Retype password." 10 60 3>&1 1>&2 2>&3 3>&1)
+	done ;}
+
+addpassuserandpass(){\
+	[ "$(uname)" == "Darwin" ] && passdir="$HOME/.local/share/password-store" || passdir="/home/$name/.local/share/password-store"
+	[ -d "$passdir-bak" ] && rm -rf $passdir-bak
+	[ -d "$passdir" && -d  ] && mv $passdir $passdir-bak
+#	dialog --infobox "Adding Pass user \"$passname\"..." 4 50
+	git clone https://$passname:$pass1@github.com/$passname/pass.git $passdir
+	while ! [ "$?" = 0 ]; do
+		dialog --colors --no-cancel --infobox "Username \\Zb($passname)\\Zn or Password \\Zb($pass1)\\Zn \\Z1Error.\\Z1\\n\\nEnter Username and Password Again..." 10 50
+		rm -rf $pasdir
+		sleep 5s
+		getpassuserandpass
+		addpassuserandpass
+	done
 }
 
 getbwuserandpass() { \
-	bwname=$(dialog --inputbox "First, please enter a email address for bitwarden ." 10 60 3>&1 1>&2 2>&3 3>&1) || exit 1
+	bwname=$(dialog --colors --inputbox "First, please enter a email address for \\Zbbitwarden\\Zn." 10 60 3>&1 1>&2 2>&3 3>&1) || exit 1
 	while ! echo "$bwname" | grep -q '\S\+@\S\+\.[A-Za-z]\+'; do
-		bwname=$(dialog --no-cancel --inputbox "Email Address not valid. Give a username beginning with a letter, with only lowercase letters, - or _." 10 60 3>&1 1>&2 2>&3 3>&1)
+		bwname=$(dialog --colors --no-cancel --inputbox "Email Address \\Z1not valid\\Zn. Give a username beginning with a letter, with only lowercase letters, - or _." 10 60 3>&1 1>&2 2>&3 3>&1)
 	done
 	bwpass1=$(dialog --no-cancel --inputbox "Enter a password for that user." 10 60 3>&1 1>&2 2>&3 3>&1)
 	bwpass2=$(dialog --no-cancel --inputbox "Retype password." 10 60 3>&1 1>&2 2>&3 3>&1)
@@ -128,8 +165,14 @@ addbwuserandpass () { \
 		# export BW_SESSION=$(sudo -u "$name" bw login --raw $bwname $bwpass1)
 	fi
 	dialog --infobox "Login on Bitwarden & Adding Environment Variables Locally..." 10 50
-	bw logout # just in case
+	bw logout 2>/dev/null
 	export BW_SESSION=$(bw login $bwname $bwpass1 --raw)
+	while [ -z "$BW_SESSION" ]; do
+		dialog --colors --no-cancel --infobox "Username \\Zb($bwname)\\Zn or Password \\Zb($bwpass1)\\Zn \\Z1Error.\\Z1\\n\\nEnter Username and Password Again..." 10 50
+		sleep 5s
+		getbwuserandpass
+		addbwuserandpass
+	done
 	}
 
 preinstallmsg() { \
@@ -165,9 +208,32 @@ maintap() {
 	tapbrew "$1"
 }
 
+# This must use before `chezmoi --apply` to make it work
+copygpg(){ \
+	gurls="https://raw.githubusercontent.com/romariorobby/dotfiles/521e22412c20fa89e52a42d28f621783b1fc939a/dot_local/share/vault/encrypted_aqs.tar.gz.asc"
+	[ "$(uname)" == "Darwin" ] && gpgdir="$HOME/.local/share/vault" || gpgdir="/home/$name/.local/share/vault"
+
+	name="mario"
+	if [ "$(uname)" == "Darwin" ]; then
+		dialog --infobox "Downloading GPG ..." 4 60
+		[ -x "$(command -v "gpg")" ] || installpkg gnupg
+		[ -d "$HOME/.gnupg" ] && rm -rf $HOME/.gnupg && mkdir -p $gpgdir
+		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpdir/aqs.tar.gz.asc
+		dialog --infobox "Decrypting GPG ..." 4 60
+		[ -f "$gpgdir/aqs.tar.gz" ] || gpg $gpdir/aqs.tar.gz.asc
+		tar -xzvf $gpgdir/aqs.tar.gz -C $HOME
+	else
+		[ -d "/home/$name/.gnupg" ] && rm -rf /home/$name/.gnupg && sudo -u "$name" mkdir -p $gpgdir
+		dialog --infobox "Downloading GPG ..." 4 60
+		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpgdir/aqs.tar.gz.asc
+		dialog --infobox "Decrypting GPG ..." 4 60
+		[ -f "$gpgdir/aqs.tar.gz" ] || sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null
+		sudo -u "$name" tar -xzf $gpgdir/aqs.tar.gz -C /home/$name
+	fi
+}
 # install dotfiles using chezmoi
 chezmoiinstalldot(){ \
-	# depend on Bitwarden and Chezmoi
+	# depend on Bitwarden and Chezmoi Variable
 	if [ "$RARBSTYPE" == "M" ]; then
 		if [ -z $is_secret ];then
 			if [ "$(uname)" == "Darwin" ]; then
@@ -178,9 +244,11 @@ chezmoiinstalldot(){ \
 			echo "MINIMAL and NO SECRET"
 		else
 			if [ "$(uname)" == "Darwin" ]; then
-				DOTMIN=1 chezmoi init --apply "$1"
+				DOTMIN=1 chezmoi init "$1" && copygpg
+				[ -d "$HOME/.gnupg" ] && chezmoi apply
 			else
-				sudo -u "$name" DOTMIN=1 chezmoi init --apply "$1"
+				sudo -u "$name" DOTMIN=1 chezmoi init "$1" && copygpg
+				[ -d "/home/$name/.gnupg" ] && sudo -u "$name" chezmoi apply
 			fi
 			echo "MINIMAL and SECRET"
 		fi
@@ -194,9 +262,11 @@ chezmoiinstalldot(){ \
 			echo "FULL and NO SECRET"
 		else
 			if [ "$(uname)" == "Darwin" ]; then
-				chezmoi init --apply "$1"
+				chezmoi init "$1" && copygpg
+				[ -d "$HOME/.gnupg" ] && chezmoi apply
 			else
-				sudo -u "$name" chezmoi init --apply "$1"
+				sudo -u "$name" chezmoi init "$1" && copygpg
+				[ -d "/home/$name/.gnupg" ] && sudo -u "$name" chezmoi apply
 			fi
 			echo "FULL and SECRET"
 		fi
@@ -368,12 +438,12 @@ symlink(){ \
 		[ -d /home/$name/.local/share/chezmoi ] && sudo -u "$name" chezmoi -v apply
 
 		# Symlink profile shell if exist
-		[ -d /home/$name/.config/shell ] && ln -sf /home/$name/.config/shell/profile /home/$name/.profile &&
-		ln -sf /home/$name/.config/shell/profile /home/$name/.zprofile && echo "Symlink Shell"
+		[ -d /home/$name/.config/shell ] && sudo -u "$name" ln -sf /home/$name/.config/shell/profile /home/$name/.profile &&
+		sudo -u "$name" ln -sf /home/$name/.config/shell/profile /home/$name/.zprofile && echo "Symlink Shell"
 
 		# Symlink profile x11 if exist
-		[ -d /home/$name/.config/x11 ] && ln -sf /home/$name/.config/x11/xinitrc /home/$name/.xinitrc &&
-		ln -sf /home/$name/.config/x11/xprofile /home/$name/.xprofile && echo "Symlink X11"
+		[ -d /home/$name/.config/x11 ] && sudo -u "$name" ln -sf /home/$name/.config/x11/xinitrc /home/$name/.xinitrc &&
+		sudo -u "$name" ln -sf /home/$name/.config/x11/xprofile /home/$name/.xprofile && echo "Symlink X11"
 	fi
 }
 # TODO: Check this Post browserpass install

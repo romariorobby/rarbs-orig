@@ -1,4 +1,5 @@
 #!/bin/sh
 gitrarbsUrl="https://github.com/romariorobby/rarbs"
+name="$(whoami)"
 source src/src-rarbs.sh
 welcomemsg || error "User Exited"
