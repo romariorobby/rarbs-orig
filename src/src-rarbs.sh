@@ -17,7 +17,6 @@ esac done
 [ -z "$aurhelper" ] && aurhelper="paru"
 # var for Password Manager (Bitwarden,pass)
 [ -z "$is_secret" ] && is_secret=""
-
 installpkg() { \
 	if [[ -f "/etc/arch-release" ||  -f "/etc/artix-release" ]]; then
 		pacman --noconfirm --needed -S "$1" >/dev/null 2>&1
@@ -46,7 +45,7 @@ wminstall() { \
 			sudo -u "$name" mkdir $awmdir
 			sudo -u "$name" cp /etc/xdg/awesome/rc.lua $awmdir
 			# change default term,editor, and close binding
-			sudo -u "$name" sed -i 's/xterm/kitty/g;s/nano/vim/g;s/"c"/"q"/g' $awmdir/rc.lua
+			sudo -u "$name" sed -i 's/xterm/kitty/g;s/nano/nvim/g;s/"c"/"q"/g' $awmdir/rc.lua
 		fi
 	elif [ $WMTYPE == "D" ];then
 		dwmdir="/home/$name/.local/src"
@@ -54,7 +53,7 @@ wminstall() { \
 		sudo -u "$name" git clone https://github.com/romariorobby/dwm $dwmdir
 		cd $dwmdir/dwm && make clean install
 	else
-		echo "NO WM INSTALLED!"
+		echo "NO WM/DE INSTALLED!"
 	fi
 }
 tapbrew(){ \
@@ -94,10 +93,9 @@ usercheck() { \
 	dialog --colors --title "WARNING!" --yes-label "CONTINUE" --no-label "No wait..." --yesno "The user \`$name\` already exists on this system. RARBS can install for a user already existing, but it will \\Zboverwrite\\Zn any conflicting settings/dotfiles on the user account.\\n\\nRARBS will \\Zbnot\\Zn overwrite your user files, documents, videos, etc., so don't worry about that, but only click <CONTINUE> if you don't mind your settings being overwritten.\\n\\nNote also that RARBS will change $name's password to the one you just gave." 14 70
 	}
 
-# FIXME: Wait for Chezmoi release for `passRaw` then i can use both bitwarden and pass as alternative
 isuserbw() { \
-	#dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && addbwuserandpass || isuserpass
-	dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && addbwuserandpass || clear
+	dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && is_bw=1 && addbwuserandpass || isuserpass
+	# dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && is_bw=1 && addbwuserandpass || clear
 }
 
 isuserpass() { \
@@ -118,9 +116,10 @@ getpassuserandpass(){ \
 
 addpassuserandpass(){\
 	[ "$(uname)" == "Darwin" ] && passdir="$HOME/.local/share/password-store" || passdir="/home/$name/.local/share/password-store"
+	#Backup $passdir and replace $passdir-bak to new one if exist just in case
 	[ -d "$passdir-bak" ] && rm -rf $passdir-bak
-	[ -d "$passdir" && -d  ] && mv $passdir $passdir-bak
-#	dialog --infobox "Adding Pass user \"$passname\"..." 4 50
+	[ -d "$passdir" ] && mv $passdir $passdir-bak
+	dialog --infobox "Adding Pass user \"$passname\"..." 4 50
 	git clone https://$passname:$pass1@github.com/$passname/pass.git $passdir
 	while ! [ "$?" = 0 ]; do
 		dialog --colors --no-cancel --infobox "Username \\Zb($passname)\\Zn or Password \\Zb($pass1)\\Zn \\Z1Error.\\Z1\\n\\nEnter Username and Password Again..." 10 50
@@ -157,7 +156,7 @@ addbwuserandpass () { \
 		dialog --infobox "Adding Bitwarden-cli user \"$bwname\" for $name..." 4 50
 		[ -x "$(command -v "bw")" ] || aurinstall bitwarden-cli-bin >/dev/null 2>&1
 		bwdir="/home/$name/.local/share/bitwarden"; mkdir -p "$bwdir"; chown -R "$name":wheel "$(dirname "$bwdir")"
-		# dialog --infobox "Adding Email Adress and Password..." 4 50
+		dialog --infobox "Adding Email Adress and Password..." 4 50
 		[ -f "$bwdir/email" -a -f "$bwdir/key"  ] && cp $bwdir/email $bwdir/email.bak && cp $bwdir/key $bwdir/email.bak
 		# sudo -u "$name" echo $bwname > $bwdir/email && sudo -u "$name" echo $bwpass1 > $bwdir/key
 		# sudo -u "$name" bw login --raw $bwname $bwpass1
@@ -210,7 +209,7 @@ maintap() {
 
 # This must use before `chezmoi --apply` to make it work
 copygpg(){ \
-	gurls="https://raw.githubusercontent.com/romariorobby/dotfiles/521e22412c20fa89e52a42d28f621783b1fc939a/dot_local/share/vault/encrypted_aqs.tar.gz.asc"
+	gurls="https://raw.githubusercontent.com/romariorobby/dotfiles/main/dot_local/share/vault/encrypted_aqs.tar.gz.asc"
 	[ "$(uname)" == "Darwin" ] && gpgdir="$HOME/.local/share/vault" || gpgdir="/home/$name/.local/share/vault"
 
 	name="mario"
@@ -234,6 +233,7 @@ copygpg(){ \
 # install dotfiles using chezmoi
 chezmoiinstalldot(){ \
 	# depend on Bitwarden and Chezmoi Variable
+	# OSX
 	if [ "$RARBSTYPE" == "M" ]; then
 		if [ -z $is_secret ];then
 			if [ "$(uname)" == "Darwin" ]; then
@@ -244,10 +244,12 @@ chezmoiinstalldot(){ \
 			echo "MINIMAL and NO SECRET"
 		else
 			if [ "$(uname)" == "Darwin" ]; then
-				DOTMIN=1 chezmoi init "$1" && copygpg
+				[ -z $is_bw ] && DOTMIN=1 chezmoi init "$1" || BW=1 DOTMIN=1 chezmoi init "$1"
+				copygpg
 				[ -d "$HOME/.gnupg" ] && chezmoi apply
 			else
-				sudo -u "$name" DOTMIN=1 chezmoi init "$1" && copygpg
+				[ -z $is_bw ] && sudo -u "$name" DOTMIN=1 chezmoi init "$1" || sudo -u "$name" BW=1 DOTMIN=1 chezmoi init "$1" 
+				copygpg
 				[ -d "/home/$name/.gnupg" ] && sudo -u "$name" chezmoi apply
 			fi
 			echo "MINIMAL and SECRET"
@@ -262,10 +264,12 @@ chezmoiinstalldot(){ \
 			echo "FULL and NO SECRET"
 		else
 			if [ "$(uname)" == "Darwin" ]; then
-				chezmoi init "$1" && copygpg
+				[ -z $is_bw ] && chezmoi init "$1" || BW=1 chezmoi init "$1"
+				copygpg
 				[ -d "$HOME/.gnupg" ] && chezmoi apply
 			else
-				sudo -u "$name" chezmoi init "$1" && copygpg
+				[ -z $is_bw ] && sudo -u "$name" chezmoi init "$1" || sudo -u "$name" BW=1 chezmoi init "$1"
+				copygpg
 				[ -d "/home/$name/.gnupg" ] && sudo -u "$name" chezmoi apply
 			fi
 			echo "FULL and SECRET"
@@ -289,17 +293,6 @@ gitmakeinstall() {
 	make install >/dev/null 2>&1
 	cd /tmp || return 1 ;}
 
-# FIXME: remove func (deprecated)
-gitmakeinstalltemp() {
-	# progname="$(basename "$1" .git)"
-	dest="$repodir"
-	# dest="$repodir/$progname"
-	git clone "$1" "$dest" >/dev/null 2>&1
-	cd "$dest/dwm" && make >/dev/null 2>&1 && make install >/dev/null 2>&1 || exit 1
-	cd "$dest/st" && make >/dev/null 2>&1 && make install >/dev/null 2>&1 || exit 1
-	cd "$dest/yadav-dwmblocks" && make >/dev/null 2>&1 && make install >/dev/null 2>&1 || exit 1
-	cd "$dest/dmenu" && make >/dev/null 2>&1 && make install >/dev/null 2>&1 || exit 1
-	cd /tmp || return 1 ;}
 manualinstall(){
 	[ -f "/usr/bin/$1" ] || (
 	dialog --infobox "Installing \"$1\", an AUR helper..." 4 50
