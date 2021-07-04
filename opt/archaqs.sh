@@ -181,13 +181,28 @@ else
 fi
 
 pacman -Sy --noconfirm archlinux-keyring
+# FIXME grep -oi "intel" PROC="intel-ucode"?
 whichproc=$(cat /proc/cpuinfo | grep Intel >/dev/null 2>&1 && echo "intel-ucode" > proc || echo "amd-ucode" > proc)
+# HACK: Figure out how to identify GPU card,
+# idk if `-o` will work on other OSes
+whichgpu(){
+	is_gpu=$(lspci | grep -i 'vga\|3d\|2d' | grep -oi "intel\|amd\|nvidia\|")
+    [ "$is_gpu" == "Intel" ] && GPU="xf86-video-intel"
+    # TODO: Untested
+	# amdgpu for modern amd gpu
+    [ "$is_gpu" == "AMD" ] && GPU="xf86-video-amdgpu"
+	# else or radeon
+    [ "$is_gpu" == "ATI" ] && GPU="xf86-video-ati"
 
+    [ "$is_gpu" == "-" ] && GPU="xf86-video-nouveau"
+}
+
+whichgpu
 checkdaemon
 if [ $(cat archtype) = "A" ]; then
-    pacstrap /mnt base base-devel linux linux-headers linux-firmware openssh reflector git chezmoi $(cat proc) vim
+    pacstrap /mnt base base-devel linux linux-headers linux-firmware openssh reflector git chezmoi $(cat proc) $GPU neovim
 else
-    basestrap /mnt base base-devel linux linux-headers linux-firmware openssh reflector git chezmoi $(cat proc) $(echo $EXPKG) vim
+    basestrap /mnt base base-devel linux linux-headers linux-firmware openssh reflector git chezmoi $(cat proc) $GPU $EXPKG neovim
 fi
 
 [ ! -d "/mnt/etc" ] && mkdir /mnt/etc
