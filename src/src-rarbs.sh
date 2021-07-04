@@ -50,7 +50,7 @@ wminstall() { \
 	elif [ $WMTYPE == "D" ];then
 		dwmdir="/home/$name/.local/src"
 		[ ! -d "$dwmdir" ] && sudo -u "$name" mkdir $dwmdir
-		sudo -u "$name" git clone https://github.com/romariorobby/dwm $dwmdir
+		sudo -u "$name" git clone https://github.com/romariorobby/dwm $dwmdir/dwm
 		cd $dwmdir/dwm && make clean install
 	else
 		echo "NO WM/DE INSTALLED!"
@@ -92,7 +92,7 @@ usercheck() { \
 	! { id -u "$name" >/dev/null 2>&1; } ||
 	dialog --colors --title "WARNING!" --yes-label "CONTINUE" --no-label "No wait..." --yesno "The user \`$name\` already exists on this system. RARBS can install for a user already existing, but it will \\Zboverwrite\\Zn any conflicting settings/dotfiles on the user account.\\n\\nRARBS will \\Zbnot\\Zn overwrite your user files, documents, videos, etc., so don't worry about that, but only click <CONTINUE> if you don't mind your settings being overwritten.\\n\\nNote also that RARBS will change $name's password to the one you just gave." 14 70
 	}
-
+# TODO Probably make own func for do you want use password manager? isuserpwdmgr()
 isuserbw() { \
 	dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && is_bw=1 && addbwuserandpass || isuserpass
 	# dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && is_bw=1 && addbwuserandpass || clear
@@ -220,14 +220,14 @@ copygpg(){ \
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
 		[ -f "$gpgdir/aqs.tar.gz" ] || gpg $gpdir/aqs.tar.gz.asc
-		tar -xzvf $gpgdir/aqs.tar.gz -C $HOME
+		tar -xzvf $gpgdir/aqs.tar.gz -C $HOME && dialog --infobox "DONE ..." 4 60
 	else
 		[ -d "/home/$name/.gnupg" ] && rm -rf /home/$name/.gnupg && sudo -u "$name" mkdir -p $gpgdir
 		dialog --infobox "Downloading GPG ..." 4 60
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpgdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
 		[ -f "$gpgdir/aqs.tar.gz" ] || sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null
-		sudo -u "$name" tar -xzf $gpgdir/aqs.tar.gz -C /home/$name
+		sudo -u "$name" tar -xzf $gpgdir/aqs.tar.gz -C /home/$name && dialog --infobox "DONE ..." 4 60
 	fi
 }
 # install dotfiles using chezmoi
@@ -287,7 +287,7 @@ gitmakeinstall() {
 	progname="$(basename "$1" .git)"
 	dir="$repodir/$progname"
 	dialog --title "RARBS Installation" --infobox "Installing \`$progname\` ($n of $total) via \`git\` and \`make\`. $(basename "$1") $2" 5 70
-	sudo -u "$name" git clone --depth 1 "$1" "$dir" >/dev/null 2>&1 || { cd "$dir" || return 1 ; sudo -u "$name" git pull --force origin master;}
+	sudo -u "$name" git clone --depth 1 "$1" "$dir" >/dev/null 2>&1 || { cd "$dir" || return 1 ;}
 	cd "$dir" || exit 1
 	make >/dev/null 2>&1
 	make install >/dev/null 2>&1
@@ -343,7 +343,7 @@ installationloop() { \
 		fi
 	else
 		if [ $RARBSTYPE == "M" ]; then
-			([ -f "$progsfile" ] && grep "^[AMPN]," "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | grep "^[AMPN]," > /tmp/progs.csv
+			([ -f "$progsfile" ] && grep "^[AMGPN]," "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | grep "^[AMGPN]," > /tmp/progs.csv
 		else
 			([ -f "$progsfile" ] && sed '/^[#H]/d' "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | sed '/^[#H]/d' > /tmp/progs.csv
 		fi
