@@ -94,10 +94,11 @@ usercheck() { \
 	}
 # TODO Probably make own func for do you want use password manager? isuserpwdmgr()
 isuserbw() { \
-	dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && is_bw=1 && addbwuserandpass || isuserpass
+	dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && is_bw=1 && addbwuserandpass || clear
 	# dialog --colors --title "Install Bitwarden" --yesno "Do you want login \\Zbbitwarden\\Zn? Otherwise '\\Zbpass (gpg)\\Zn' will be used" 6 90 && getbwuserandpass && is_secret=1 && is_bw=1 && addbwuserandpass || clear
 }
 
+# TODO Fix pass can't retrieve from root user , ignore until fixed!
 isuserpass() { \
 	# https://github.com/fpco/best-practices/blob/master/password-store.md
 	dialog --colors --title "Install Pass" --yesno "Do you want login \\Z0\\ZbPass\\Z0\\Zn? " 6 90 && getpassuserandpass && is_secret=1 && addpassuserandpass || clear
@@ -211,23 +212,24 @@ maintap() {
 copygpg(){ \
 	gurls="https://raw.githubusercontent.com/romariorobby/dotfiles/main/dot_local/share/vault/encrypted_aqs.tar.gz.asc"
 	[ "$(uname)" == "Darwin" ] && gpgdir="$HOME/.local/share/vault" || gpgdir="/home/$name/.local/share/vault"
-
-	name="mario"
 	if [ "$(uname)" == "Darwin" ]; then
 		dialog --infobox "Downloading GPG ..." 4 60
 		[ -x "$(command -v "gpg")" ] || installpkg gnupg
-		[ -d "$HOME/.gnupg" ] && rm -rf $HOME/.gnupg && mkdir -p $gpgdir
+		[ -d "$HOME/.gnupg" ] && rm -rf $HOME/.gnupg
+		[ ! -d "$gpgdir" ] && sudo -u "$name" mkdir -p $gpgdir
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
-		[ -f "$gpgdir/aqs.tar.gz" ] || gpg $gpdir/aqs.tar.gz.asc
-		tar -xzvf $gpgdir/aqs.tar.gz -C $HOME && dialog --infobox "DONE ..." 4 60
+		gpg $gpdir/aqs.tar.gz.asc || error "Error Decrypting"
+		tar -xzvf $gpgdir/aqs.tar.gz -C $HOME && clear
 	else
-		[ -d "/home/$name/.gnupg" ] && rm -rf /home/$name/.gnupg && sudo -u "$name" mkdir -p $gpgdir
 		dialog --infobox "Downloading GPG ..." 4 60
+		[ -x "$(command -v "gpg")" ] || installpkg gnupg
+		[ -d "/home/$name/.gnupg" ] && rm -rf /home/$name/.gnupg
+		[ ! -d "$gpgdir" ] && sudo -u "$name" mkdir -p $gpgdir
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpgdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
-		[ -f "$gpgdir/aqs.tar.gz" ] || sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null
-		sudo -u "$name" tar -xzf $gpgdir/aqs.tar.gz -C /home/$name && dialog --infobox "DONE ..." 4 60
+		sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null || error "Error Decrypting"
+		sudo -u "$name" tar -xzf $gpgdir/aqs.tar.gz -C /home/$name && clear
 	fi
 }
 # install dotfiles using chezmoi
