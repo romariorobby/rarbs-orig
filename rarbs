@@ -109,6 +109,12 @@ main() { \
 		# Start/restart PulseAudio.
 		killall pulseaudio; sudo -u "$name" pulseaudio --start
 
+		if [ ! -z "$(pidof -s runit)" ]; then
+				# Dbus uuidgen must generated
+				dbus-uuidgen > /var/lib/dbus/machine-id
+				# Use sytem notif off Brave
+				echo "export \$(dbus-launch)" > /etc/profile.d/dbus.sh
+		fi
 		# This line, overwriting the `newperms` command above will allow the user to run
 		# serveral important commands, `shutdown`, `reboot`, updating, etc. without a password.
 		newperms "%wheel ALL=(ALL) ALL #MARIO
