@@ -25,11 +25,11 @@ locale-gen
 NETMD=""
 if [ $(cat archtype.tmp) = "X" ]; then
     pidof runit && echo "Daemon Using Runit" && NETMD="networkmanager-runit"
-    pidof openrc && echo "Daemon Using openrc" && NETMD="networkmanager-openrc"
+    pidof init && echo "Daemon Using openrc" && NETMD="networkmanager-openrc"
     pidof s6 && echo "Daemon Using s6" && NETMD="networkmanager-s6"
 fi
 
-pacman --noconfirm --needed -S networkmanager $(echo $NETMD) dialog openssh git
+pacman --noconfirm --needed -S networkmanager $NETMD dialog openssh git
 
 if [ $(cat archtype.tmp) = "A" ];then
     systemctl enable NetworkManager
