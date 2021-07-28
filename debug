@@ -1,10 +1,21 @@
 #!/bin/sh
-name=$(eval getent passwd {$(awk '/^UID_MIN/ {print $2}' /etc/login.defs)..$(awk '/^UID_MAX/ {print $2}' /etc/login.defs)} | cut -d: -f1)
-
-case $OSTYPE in
-	*) echo "Hello" ;;
-	linux*) echo "It's linux" ;;
-	darwin*) echo "It's Mac" ;;
-esac
-#rarbtype
-#wmdeinstall
+getuser(){ \
+    if [ "$(uname)" == "Darwin" ];then 
+        tempuser=$(mktemp)
+        listname=$(dscl . list /Users | grep -v '_\|root\|daemon') #> $tempuser)
+        if [ "$listname | wc -l" != 1 ];then
+            echo "There are more than one user. Choose User:"
+            select user in $listname; do
+                case $user in
+                    *)  name=$user
+                        break ;;
+                esac
+            done
+        else
+            exit 1
+        fi
+    else
+        name=$(eval getent passwd {$(awk '/^UID_MIN/ {print $2}' /etc/login.defs)..$(awk '/^UID_MAX/ {print $2}' /etc/login.defs)} | cut -d: -f1)
+    fi
+}
+getuser

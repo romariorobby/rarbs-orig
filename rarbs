@@ -288,10 +288,10 @@ chezmoiinstalldot(){ \
 	# OSX
 	if [ -z $is_secret ];then
 		case $OSTYPE:$tpick in
-			linux*:"M") sudo -u "$name" DOTMIN=1 SECRETOFF=1 chezmoi init --apply "$1"
-			linux*:"F") sudo -u "$name" SECRETOFF=1 chezmoi init --apply "$1"
-			*:"M") SECRETOFF=1 chezmoi init --apply "$1"
-			*:"F") DOTMIN=1 SECRETOFF=1 chezmoi init --apply "$1"
+			linux*:"M") sudo -u "$name" DOTMIN=1 SECRETOFF=1 chezmoi init --apply "$1" ;;
+			linux*:"F") sudo -u "$name" SECRETOFF=1 chezmoi init --apply "$1" ;;
+			*:"M") SECRETOFF=1 chezmoi init --apply "$1" ;;
+			*:"F") DOTMIN=1 SECRETOFF=1 chezmoi init --apply "$1" ;;
 		esac
 	else
 		case $OSTYPE:$tpick in
@@ -302,8 +302,6 @@ chezmoiinstalldot(){ \
 		esac
 	fi
 
-
-	case 
 	if [ "$tpick" == "M" ]; then
 		if [ -z $is_secret ];then
 			if [ "$OSTYPE" == "linux-gnu" ]; then
