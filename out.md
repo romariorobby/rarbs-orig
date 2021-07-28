@@ -1,0 +1,26 @@
+- Error
+- Message
+- User and pass (if MODE = Installer)
+- is 
+  - chezmoi?
+  - secret?
+  - userbw?
+- Picker
+  - modepick
+  - wmdepick
+    - wmdeinstall
+  - typepick
+- Installer
+ - insbrew
+ - manualinstall
+ - Maininstall
+ - Maintap
+ - Aurinstall
+ - Pipinstall
+ - npminstall
+ - gitmakeinstall
+ -  
+ - installationloop
+- Copygpg
+- Chezmoi
+  - Chezmoiinstalldot

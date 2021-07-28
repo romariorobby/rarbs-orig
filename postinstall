@@ -1,6 +1,98 @@
 #!/bin/sh
+
+while getopts ":a:r:b:p:s:h" o; do case "${o}" in
+	h) printf "Optional arguments for custom use:\\n  -r: Dotfiles repository (local file or url)\\n  -p: Dependencies and programs csv (local file or url)\\n  -s: Homebrew Source (tap)\\n  -a: AUR helper (must have pacman-like syntax) (paru by default)\\n  -h: Show this message\\n" && exit 1 ;;
+	r) dotfilesrepo=${OPTARG} && chezmoi git ls-remote "$dotfilesrepo" || exit 1 ;;
+	b) repobranch=${OPTARG} ;;
+	p) progsfile=${OPTARG} ;;
+	s) brewtapfile=${OPTARG} ;;
+	a) aurhelper=${OPTARG} ;;
+	*) printf "Invalid option: -%s\\n" "$OPTARG" && exit 1 ;;
+esac done
+
+rarbtype() { \
+	dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select RARBS Type: " 10 60 3 \
+		M "Minimal" on \
+		F "Full" off 2> rarbstype
+		RARBSTYPE="$(cat rarbstype)"
+}
+
 buildsrcneovim(){ \
 	cd $(mktemp -d)
 	git clone --depth 1 https://github.com/neovim/neovim && cd neovim
 	sudo make CMAKE_BUILD_TYPE=Release install
 }
+
+installationloop() { \
+	if [ "$(uname)" == "Darwin" ]; then
+		if [ $RARBSTYPE == "M" ]; then
+			([ -f "$progsfile" ] && grep "^[HPN]," $progsfile > /tmp/progs.csv ) || curl -Ls "$progsfile" | grep "^[HPN]," > /tmp/progs.csv
+			([ -f "$brewtapfile" ] && grep "^M," $brewtapfile > /tmp/brewtap.csv ) || curl -Ls "$brewtapfile" | grep "^M," > /tmp/brewtap.csv
+		else
+			([ -f "$progsfile" ] && sed '/^[#AM]/d' $progsfile > /tmp/progs.csv ) || curl -Ls "$progsfile" | sed '/^[#AM]/d' > /tmp/progs.csv
+			([ -f "$brewtapfile" ] && sed '/^#/d' $brewtapfile > /tmp/brewtap.csv ) || curl -Ls "$brewtapfile" | sed '/^#/d' > /tmp/brewtap.csv
+		fi
+	else
+		if [ $RARBSTYPE == "M" ]; then
+			([ -f "$progsfile" ] && grep "^[AMGPN]," "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | grep "^[AMGPN]," > /tmp/progs.csv
+		else
+			([ -f "$progsfile" ] && sed '/^[#H]/d' "$progsfile" > /tmp/progs.csv) || curl -Ls "$progsfile" | sed '/^[#H]/d' > /tmp/progs.csv
+		fi
+	fi
+	totaltap=$(wc -l < /tmp/brewtap.csv)
+	while IFS=, read -r tag source comment; do
+		s=$((s+1))
+		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
+		case "$tag" in
+			"M") maintap "$source" "$comment" ;;
+		esac
+	done < /tmp/brewtap.csv
+	# TODO: Make Read from org file del/IFS="|"
+	# ([ -f "$progsfile" ] && cp "$progsfile" /tmp/progs.csv) || curl -lLs "$progsfile" | sed '/^-\|*\|#/d;/^|-/d' > /tmp/progs.csv
+	total=$(wc -l < /tmp/progs.csv)
+	[[ -f "/etc/arch-release" || -f "/etc/artix-release" ]] && aurinstalled=$(pacman -Qqm)
+	[ "$(uname)" == "Darwin" ] && brewinstalled=$(brew list | uniq)
+	while IFS=, read -r tag program comment; do
+		n=$((n+1))
+		echo "$comment" | grep -q "^\".*\"$" && comment="$(echo "$comment" | sed "s/\(^\"\|\"$\)//g")"
+		# Arch-Linux
+		if [[ -f "/etc/arch-release" || -f "/etc/artix-release" ]]; then
+			if [ "$RARBSTYPE" == "M" ]; then
+				case "$tag" in
+					"M") maininstall "$program" "$comment" ;;
+					"A") aurinstall "$program" "$comment" ;;
+					"G") gitmakeinstall "$program" "$comment" ;;
+				esac
+			else
+				case "$tag" in
+					"M"|"MO") maininstall "$program" "$comment" ;;
+					"A"|"AO") aurinstall "$program" "$comment" ;;
+					"G"|"GO") gitmakeinstall "$program" "$comment" ;;
+				esac
+			fi
+		# MacOS
+		else
+			if [ "$RARBSTYPE" == "M" ]; then
+				case "$tag" in
+					"H") maininstall "$program" "$comment" ;;
+				esac
+			else
+				case "$tag" in
+					"H"|"HO") maininstall "$program" "$comment" ;;
+					# "HO") maininstall "$program" "$comment" ;;
+				esac
+			fi
+		fi
+		if [ "$RARBSTYPE" == "M" ]; then
+			case "$tag" in
+				"P") pipinstall "$program" "$comment" ;;
+				"N") npminstall "$program" "$comment" ;;
+				# "G") gitmakeinstall "$program" "$comment" ;;
+			esac
+		else
+			case "$tag" in
+				"P"|"PO") pipinstall "$program" "$comment" ;;
+				"N"|"NO") npminstall "$program" "$comment" ;;
+			esac
+		fi
+	done < /tmp/progs.csv ;}

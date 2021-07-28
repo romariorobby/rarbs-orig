@@ -1,5 +1,14 @@
-*
-Fork of LARBS
+* RARBS
+this is fork of larbs
+
+* Progs.csv
+
+| OS  	 | Package Manager/AUR helper   | TAG 	           | Optional Tag                         |
+|--------|------------------------------|------------------|--------------------------------------|
+|Linux   |Pacman,Paru/yay               | M = Main, A = AUR| M = Minimal, O = Optional , X = Extra, Z = JIC|
+|MacOS   |Homebrew   	                | H = Main 	   | M = Minimal, O = Optional , X = Extra, Z = JIC|
+|Windows |WinGet  	                | W = Main 	   | M = Minimal, O = Optional , X = Extra, Z = JIC|
+
+
 ** TODO
-- [X] Create MacOS Bootstrap
 - [ ] Create Windows Bootstrap

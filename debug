@@ -1,5 +1,10 @@
 #!/bin/sh
-gitrarbsUrl="https://github.com/romariorobby/rarbs"
-name="$(whoami)"
-source src/src-rarbs.sh
-welcomemsg || error "User Exited"
+name=$(eval getent passwd {$(awk '/^UID_MIN/ {print $2}' /etc/login.defs)..$(awk '/^UID_MAX/ {print $2}' /etc/login.defs)} | cut -d: -f1)
+
+case $OSTYPE in
+	*) echo "Hello" ;;
+	linux*) echo "It's linux" ;;
+	darwin*) echo "It's Mac" ;;
+esac
+#rarbtype
+#wmdeinstall
