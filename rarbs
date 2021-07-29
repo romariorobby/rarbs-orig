@@ -35,11 +35,18 @@ installpkg() { \
 	fi
 }
 modepick(){ \
-	mpick=$(dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select RARBS Mode: " 10 80 3 \
-	        I "Installer (Archlinux only)" off \
-		R "(Re)install Package / Recheck Package from progs.csv" on \
-		P "(Re)install Package / Recheck Package from progs.csv" on \
-		D "Debug" off 3>&1 1>&2 2>&3 3>&1)
+	if [[ -f "/etc/arch-release" ||  -f "/etc/artix-release" ]]; then
+        mpick=$(dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select RARBS Mode: " 10 80 3 \
+                I "Installer (Archlinux only)" off \
+                R "(Re)install/check Package from progs.csv" on \
+                P "Post Install" on \
+                D "Debug" off 3>&1 1>&2 2>&3 3>&1)
+    else
+        mpick=$(dialog --no-cancel --backtitle "RARBS Type Installation" --radiolist "Select RARBS Mode: " 10 80 3 \
+                R "(Re)install/check Package from progs.csv" on \
+                P "Post Install" on \
+                D "Debug" off 3>&1 1>&2 2>&3 3>&1)
+    fi
 	case $mpick in
 		"I") namempick="Installer" ;;
 		"R") namempick="(Re)install Package" ;;
@@ -573,6 +580,17 @@ laptopconf(){ \
     lt_taptoclick
 }
 mpickI() { \
+    archmpckI=$(dialog --no-cancel --backtitle "RARBS Installer" --radiolist "Select Which Installer: " 10 80 3 \
+        A "Installer" on \
+        C "Chroot" off \
+        P "Post Installer" off 3>&1 1>&2 2>&3 3>&1)
+    case $archmpckI in
+        "A") bash ./opt/archaqs.sh ;;
+        "C") bash ./opt/chroot.sh ;;
+        "P") return 0 ;;
+        *) Error "You must to pick!";;
+    esac
+
 	# Get and verify username and password.
 	getuserandpass || error "User exited."
 
@@ -603,7 +621,7 @@ mpickI() { \
 
 	# Make pacman and yay colorful, Enable Parallel Download and adds eye candy on the progress bar because why not.
 	grep -q "^Color" /etc/pacman.conf || sed -i "s/^#Color$/Color/" /etc/pacman.conf
-	grep -q "^ParallelDownloads" /etc/pacman.conf || sed -i "s/#Parallel/Paralell/" /etc/pacman.conf
+	grep -q "^ParallelDownloads" /etc/pacman.conf || sed -i "s/#Parallel/Parallel/" /etc/pacman.conf
 	grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
 
 	# Use all cores for compilation.
@@ -732,7 +750,7 @@ main(){ \
 	modepick || error "modepick error"
 
 	# Type Pick
-	typepick || error "Error Picking type"
+	[ "$mpick" != "I" ] && typepick
 	case "$OSTYPE" in
 		darwin*)  installMac ;;
 		linux*)   installLin ;;

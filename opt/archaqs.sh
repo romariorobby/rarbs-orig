@@ -30,10 +30,14 @@ dialog --defaultno --title "DON'T BE A BRAINLET!" --yesno "Do you think I'm memi
 
 lsblk && echo "======================================[Refresh Mirrorlist with Reflector]==============================="
 if [ "$archtype" = "A" ]; then
-    reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 && pacman -Syy
+    reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1
 else
-    reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist-arch >/dev/null 2>&1 && pacman -Syy
+    reflector -c ID,SG -a 6 --sort rate --save /etc/pacman.d/mirrorlist-arch >/dev/null 2>&1
 fi
+grep -q "^Color" /etc/pacman.conf || sed -i "s/^#Color$/Color/" /etc/pacman.conf
+grep -q "^ParallelDownloads" /etc/pacman.conf || sed -i "s/#Parallel/Parallel/" /etc/pacman.conf
+grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
+pacman -Syy
 
 IFS=' ' read -ra SIZE <<< $(cat psize)
 
@@ -43,7 +47,7 @@ if ! [ ${#SIZE[@]} -eq 2 ] || ! [[ ${SIZE[0]} =~ $re ]] || ! [[ ${SIZE[1]} =~ $r
 fi
 
 timedatectl set-ntp true
-
+# TODO: Prompt if you want to create swap or not
 uefiformat() {
 cat <<EOF | fdisk $(cat drivepath)
 o
@@ -205,9 +209,9 @@ whichproc
 whichgpu
 checkdaemon
 if [ "$archtype" = "A" ]; then
-    pacstrap /mnt base base-devel linux linux-headers linux-firmware openssh reflector git chezmoi $PROC $GPU neovim
+    pacstrap /mnt base base-devel linux linux-headers linux-firmware reflector chezmoi $PROC $GPU neovim
 else
-    basestrap /mnt base base-devel linux linux-headers linux-firmware openssh reflector git chezmoi $PROC $GPU $EXPKG neovim
+    basestrap /mnt base base-devel linux linux-headers linux-firmware reflector chezmoi $PROC $GPU $EXPKG neovim
 fi
 
 [ ! -d "/mnt/etc" ] && mkdir /mnt/etc
@@ -222,6 +226,7 @@ fi
 
 # Cleanup
 cat tz.tmp > /mnt/tzfinal.tmp
+cat drivepath > /mnt/drivepath.tmp
 echo $installtype > /mnt/installtype.tmp
 echo $archtype > /mnt/archtype.tmp
 rm tz.tmp

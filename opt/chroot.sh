@@ -8,6 +8,11 @@ echo "-----ROOT PASSWORD----"
 echo "----------------------"
 passwd
 
+grep -q "^Color" /etc/pacman.conf || sed -i "s/^#Color$/Color/" /etc/pacman.conf
+grep -q "^ParallelDownloads" /etc/pacman.conf || sed -i "s/#Parallel/Parallel/" /etc/pacman.conf
+grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
+pacman -Syy
+driveUser=$(cat drivepath.tmp)
 TZuser=$(cat tzfinal.tmp)
 ln -sf /usr/share/zoneinfo/$TZuser /etc/localtime
 
@@ -57,7 +62,7 @@ usbuefigrub(){
 }
     
 legacygrub(){
-    pacman --noconfirm --needed -S grub && grub-install --target=i386-pc && grub-mkconfig -o /boot/grub/grub.cfg
+    pacman --noconfirm --needed -S grub && grub-install --target=i386-pc $driveUser && grub-mkconfig -o /boot/grub/grub.cfg
 }
 
 echo "=========================================="
