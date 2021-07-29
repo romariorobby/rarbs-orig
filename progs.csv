@@ -29,7 +29,7 @@ AO,genius-spicetify-git, "Spicetify app fetches lyric from genius and Musiclyric
 AO,glow-bin, "is Markdown Rendered <CLI>"
 AO,klavaro, "Typing Tutor (#keyboard)"
 AO,neovim-nightly-bin,"a tidier vim with some useful features"
-AO,nerd-fonts-sf-mono, "is Apple Fonts SFMono Nerd Font Patched [Font]"
+A,nerd-fonts-sf-mono, "is Apple Fonts SFMono Nerd Font Patched [Font]"
 AO,notion-enhancer, " [GUI] AIO productivity workspace with some enhancer "
 AO,obisidian-appimage, " [GUI] Offiline Markdown Notes"
 AO,otf-etbb, "Et Book fonts used for emacs (req:emacs) [Font]"
