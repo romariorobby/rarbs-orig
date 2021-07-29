@@ -546,8 +546,31 @@ finalize(){ \
 		dialog --title "All done, LINUX!" --msgbox "Congrats! Provided there were no hidden errors, the script completed successfully and all the programs and configuration files should be in place.\\n\\nTo run the new graphical environment, log out and log back in as your new user, then run the command \"startx\" to start the graphical environment (it will start automatically in tty1).\\n\\n.t Romario" 12 80
 	fi
 }
-laptopconf(){ \
+getChassis(){ \
+	if [ -x "$(command -v "dmidecode")" ]; then
+		#https://superuser.com/questions/877677/programatically-determine-if-an-script-is-being-executed-on-laptop-or-desktop
+        # Notebook - Desktop
+		is_chassis=$(dmidecode --string chassis-type)
+	else
+		# Systemd Spesific
+        # laptop
+		is_chassis=$(hostnamectl chassis)
+	fi
+}
 
+lt_taptoclick(){ \
+    [ ! -f /etc/X11/xorg.conf.d/40-libinput.conf ] && \
+        printf 'Section "InputClass"
+			Identifier "libinput touchpad catchall"
+			MatchIsTouchpad "on"
+			MatchDevicePath "/dev/input/event*"
+			Driver "libinput"
+		# Enable left mouse button by tapping
+		Option "Tapping" "on"
+	EndSection' > /etc/X11/xorg.conf.d/40-libinput.conf
+}
+laptopconf(){ \
+    lt_taptoclick
 }
 mpickI() { \
 	# Get and verify username and password.
@@ -613,24 +636,11 @@ mpickI() { \
 
 	chezmoiinstall "$dotfilesrepo"
 
-	# Tap to click
-	if [ -x "$(command -v "dmidecode")" ]; then
-		#https://superuser.com/questions/877677/programatically-determine-if-an-script-is-being-executed-on-laptop-or-desktop
-		is_chassis=$(dmidecode --string chassis-type)
-	else
-		# Systemd Spesific
-		is_chassis=$(hostnamectl chassis)
-	fi
-	[ "is_chassis" == "Notebook" ] || [ "$is_chassis" = "laptop" ] && \
-		"[ ! -f /etc/X11/xorg.conf.d/40-libinput.conf ] && printf 'Section "InputClass"
-			Identifier "libinput touchpad catchall"
-			MatchIsTouchpad "on"
-			MatchDevicePath "/dev/input/event*"
-			Driver "libinput"
-		# Enable left mouse button by tapping
-		Option "Tapping" "on"
-	EndSection' > /etc/X11/xorg.conf.d/40-libinput.conf
+    getChassis
+    # Laptop Configuration Only
+    [ "$is_chassis" = "Notebook" ] || [ "$is_chassis" = "laptop" ] && laptopconf
 
+    [ -z ]
 	# Fix fluidsynth/pulseaudio issue.
 	grep -q "OTHER_OPTS='-a pulseaudio -m alsa_seq -r 48000'" /etc/conf.d/fluidsynth ||
 		echo "OTHER_OPTS='-a pulseaudio -m alsa_seq -r 48000'" >> /etc/conf.d/fluidsynth
