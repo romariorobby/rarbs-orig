@@ -50,7 +50,7 @@ timedatectl set-ntp true
 # TODO: Prompt if you want to create swap or not
 uefiformat() {
 cat <<EOF | fdisk $(cat drivepath)
-o
+g
 n
 p
 
@@ -183,7 +183,10 @@ if [ "$installtype" = "U" ]; then
 else
     ls /sys/firmware/efi/efivars >/dev/null 2>&1 && uefiformat || legacyformat
 fi
-
+lsblk && sleep 10s
+echo "Do you want to continue ? [y/n]"
+read -r confirm
+echo "$confirm" | grep -iq "^y$" && continue || exit 
 pacman -Q artix-keyring >/dev/null 2>&1 && pacman --noconfirm -S artix-keyring >/dev/null 2>&1
 pacman -Sy --noconfirm archlinux-keyring
 # FIXME grep -oi "intel" PROC="intel-ucode"?
@@ -197,11 +200,14 @@ whichproc(){ \
 # HACK: Figure out how to identify GPU card,
 # idk if `-o` will work on other OSes
 whichgpu(){ \
-	is_gpu=$(lspci | grep -i 'vga\|3d\|2d' | grep -oi "intel\|amd\|nvidia\|")
+	is_gpu=$(lspci | grep -i 'vga\|2d\|3d' | grep -oi "intel\|amd\|nvidia\|parallels")
 	case $is_gpu in
 		"Intel") GPU="xf86-video-intel" ;;
 		"AMD") GPU="xf86-video-amdgpu" ;;
 		"ATI") GPU="xf86-video-ati" ;;
+		"Parallels") GPU="xf86-video-vesa" ;;
+#		"") GPU="nvidia nvidia-utils nvidia-settings"
+#		"") GPU="xf86-video-vmware"
 #		"") GPU="xf86-video-nouveau"
 	esac
 }
