@@ -259,8 +259,12 @@ copygpg(){ \
 		[ ! -d "$gpgdir" ] && sudo -u "$name" mkdir -p $gpgdir
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
-		gpg $gpdir/aqs.tar.gz.asc || error "Error Decrypting"
-		tar -xzvf $gpgdir/aqs.tar.gz -C $HOME && clear
+		gpg $gpdir/aqs.tar.gz.asc || dialog --infobox "Error Decrypting GPG. Retry..." 4 60
+        while ! [ "$?" = 0 ]; do
+            dialog --infobox "Decrypting GPG ..." 4 60
+            gpg $gpdir/aqs.tar.gz.asc
+        done
+		tar -xzvf $gpgdir/aqs.tar.gz -C $HOME
 	else
 		dialog --infobox "Downloading GPG ..." 4 60
 		[ -x "$(command -v "gpg")" ] || installpkg gnupg
@@ -268,9 +272,15 @@ copygpg(){ \
 		[ ! -d "$gpgdir" ] && sudo -u "$name" mkdir -p $gpgdir
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpgdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
-		sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null || error "Error Decrypting"
-		sudo -u "$name" tar -xzf $gpgdir/aqs.tar.gz -C /home/$name && clear
+		sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null || dialog --infobox "Error Decrypting GPG. Retry..." 4 60
+        while ! [ "$?" = 0 ]; do
+            dialog --infobox "Decrypting GPG ..." 4 60
+            dialog --infobox "Error Decrypting GPG. retry..." 4 60
+            sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null
+        done
+		sudo -u "$name" tar -xzf $gpgdir/aqs.tar.gz -C /home/$name
 	fi
+    dialog --infobox "Completed Extracted GPG ..." 4 60
 }
 # install dotfiles using chezmoi
 # secret on + B
