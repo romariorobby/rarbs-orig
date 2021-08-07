@@ -76,6 +76,9 @@ defaults write com.apple.dock autohide -bool true
 echo "Dock: Don't animate opening application from the dock"
 defaults write com.apple.dock launchanim -bool false
 
+echo "Hammerspoon: Change default configuration to $HOME/.config/hammerspoon"
+defaults write org.hammerspoon.Hammerspoon MJConfigFile "~/.config/hammerspoon/init.lua"
+
 echo "Dock: Remove the auto-hiding Dock delay"
 defaults write com.apple.dock autohide-delay -float 0
 
