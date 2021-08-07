@@ -1,21 +1,23 @@
 #!/bin/sh
 getuser(){ \
     if [ "$(uname)" == "Darwin" ];then 
-        tempuser=$(mktemp)
         listname=$(dscl . list /Users | grep -v '_\|root\|daemon') #> $tempuser)
-        if [ "$listname | wc -l" != 1 ];then
-            echo "There are more than one user. Choose User:"
+    else
+        # HACK: Temporary to get user name
+        listname=$(grep "1000\|0:0:" /etc/passwd | cut -d: -f1)
+    fi
+    tempuser=$(mktemp)
+
+    if [ "$listname | wc -l" != 1 ];then
+        echo "There are more than one user. Choose User:"
+        while [ -z $name ]; do
             select user in $listname; do
                 case $user in
                     *)  name=$user
                         break ;;
                 esac
             done
-        else
-            exit 1
-        fi
-    else
-        name=$(eval getent passwd {$(awk '/^UID_MIN/ {print $2}' /etc/login.defs)..$(awk '/^UID_MAX/ {print $2}' /etc/login.defs)} | cut -d: -f1)
+        done
     fi
 }
 getuser

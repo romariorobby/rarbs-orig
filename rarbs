@@ -255,11 +255,10 @@ copygpg(){ \
 	if [ "$(uname)" == "Darwin" ]; then
 		dialog --infobox "Downloading GPG ..." 4 60
 		[ -x "$(command -v "gpg")" ] || installpkg gnupg
-		[ -d "$HOME/.gnupg" ] && rm -rf $HOME/.gnupg
 		[ ! -d "$gpgdir" ] && sudo -u "$name" mkdir -p $gpgdir
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
-		gpg $gpdir/aqs.tar.gz.asc || dialog --infobox "Error Decrypting GPG. Retry..." 4 60
+		gpg $gpdir/aqs.tar.gz.asc
         while ! [ "$?" = 0 ]; do
             dialog --infobox "Decrypting GPG ..." 4 60
             gpg $gpdir/aqs.tar.gz.asc
@@ -272,7 +271,7 @@ copygpg(){ \
 		[ ! -d "$gpgdir" ] && sudo -u "$name" mkdir -p $gpgdir
 		[ -f "$gpgdir/aqs.tar.gz.asc" ] || curl -Ls "$gurls" -o $gpgdir/aqs.tar.gz.asc
 		dialog --infobox "Decrypting GPG ..." 4 60
-		sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null || dialog --infobox "Error Decrypting GPG. Retry..." 4 60
+		sudo -u "$name" gpg $gpgdir/aqs.tar.gz.asc 2>/dev/null
         while ! [ "$?" = 0 ]; do
             dialog --infobox "Decrypting GPG ..." 4 60
             dialog --infobox "Error Decrypting GPG. retry..." 4 60
@@ -505,10 +504,9 @@ systembeepoff() {
 
 symlink(){ \
 	[ -f "/etc/bash.bashrc" ] && echo '
-	if [ -s "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc" ]; then
-			. "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc"
-	fi
-	' >> /etc/bash.bashrc
+if [ -s "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc" ]; then
+	. "${XDG_CONFIG_HOME:-$HOME/.config}/bash/.bashrc"
+fi' >> /etc/bash.bashrc
 	if [ "$(uname)" == "Darwin" ]; then
 		# Init
 		cd $HOME && rm .bashrc .bash_history .bash_profile .bash_logout .zsh_history
@@ -597,7 +595,7 @@ mpickI() { \
     case $archmpckI in
         "A") bash ./opt/archaqs.sh ;;
         "C") bash ./opt/chroot.sh ;;
-        "P") return 0 ;;
+        "P") continue ;;
         *) Error "You must to pick!";;
     esac
 
@@ -668,7 +666,6 @@ mpickI() { \
     # Laptop Configuration Only
     [ "$is_chassis" = "Notebook" ] || [ "$is_chassis" = "laptop" ] && laptopconf
 
-    [ -z ]
 	# Fix fluidsynth/pulseaudio issue.
 	grep -q "OTHER_OPTS='-a pulseaudio -m alsa_seq -r 48000'" /etc/conf.d/fluidsynth ||
 		echo "OTHER_OPTS='-a pulseaudio -m alsa_seq -r 48000'" >> /etc/conf.d/fluidsynth
